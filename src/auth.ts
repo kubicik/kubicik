@@ -17,8 +17,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null
 
-        const dbUrl = process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "dev.db")}`
-        const adapter = new PrismaLibSql({ url: dbUrl })
+        const url =
+          process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "dev.db")}`
+        const authToken = process.env.TURSO_AUTH_TOKEN
+        const adapter = new PrismaLibSql(authToken ? { url, authToken } : { url })
         const db = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
 
         try {
@@ -33,11 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           )
           if (!valid) return null
 
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.username,
-          }
+          return { id: user.id, name: user.name, email: user.username }
         } finally {
           await db.$disconnect()
         }
