@@ -1,7 +1,7 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3"
+import { PrismaLibSql } from "@prisma/adapter-libsql"
 import { PrismaClient } from "@/generated/prisma/client"
 import path from "path"
 import { authConfig } from "./auth.config"
@@ -18,7 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.username || !credentials?.password) return null
 
         const dbUrl = process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "dev.db")}`
-        const adapter = new PrismaBetterSqlite3({ url: dbUrl })
+        const adapter = new PrismaLibSql({ url: dbUrl })
         const db = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
 
         try {
