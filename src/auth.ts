@@ -17,8 +17,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null
 
-        const dbPath = path.join(process.cwd(), "dev.db")
-        const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` })
+        const dbUrl = process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "dev.db")}`
+        const adapter = new PrismaBetterSqlite3({ url: dbUrl })
         const db = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
 
         try {

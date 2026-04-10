@@ -4,9 +4,17 @@ import path from "path"
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
-function createPrismaClient() {
+function getDbUrl(): string {
+  // Use DATABASE_URL from environment if set (production deployments)
+  const envUrl = process.env.DATABASE_URL
+  if (envUrl) return envUrl
+  // Fallback to local dev.db next to the project root
   const dbPath = path.join(process.cwd(), "dev.db")
-  const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` })
+  return `file:${dbPath}`
+}
+
+function createPrismaClient() {
+  const adapter = new PrismaBetterSqlite3({ url: getDbUrl() })
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
 }
 

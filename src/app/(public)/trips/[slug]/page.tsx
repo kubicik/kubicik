@@ -7,8 +7,13 @@ import type { Stop, Photo } from "@/types"
 export const revalidate = 60
 
 export async function generateStaticParams() {
-  const trips = await prisma.trip.findMany({ where: { published: true }, select: { slug: true } })
-  return trips.map((t) => ({ slug: t.slug }))
+  try {
+    const trips = await prisma.trip.findMany({ where: { published: true }, select: { slug: true } })
+    return trips.map((t) => ({ slug: t.slug }))
+  } catch {
+    // DB may not exist yet at build time (first deploy before migrate)
+    return []
+  }
 }
 
 function formatDate(d: string | null): string {
