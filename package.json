@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate deploy && next build",
-    "start": "next start",
+    "build": "prisma migrate deploy && npx tsx prisma/seed.ts && next build",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "lint": "eslint",
     "db:seed": "npx tsx prisma/seed.ts",
     "postinstall": "prisma generate"
