@@ -1,0 +1,57 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --apple-blue: #007aff;
+  --apple-gray: #8e8e93;
+  --apple-gray2: #aeaeb2;
+  --apple-gray5: #e5e5ea;
+  --apple-gray6: #f2f2f7;
+  --apple-red: #ff3b30;
+  --apple-green: #34c759;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-apple-blue: var(--apple-blue);
+  --color-apple-gray: var(--apple-gray);
+  --color-apple-gray2: var(--apple-gray2);
+  --color-apple-gray5: var(--apple-gray5);
+  --color-apple-gray6: var(--apple-gray6);
+  --color-apple-red: var(--apple-red);
+  --color-apple-green: var(--apple-green);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Apple-style scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c6;
+  border-radius: 3px;
+}
+
+/* Leaflet fix for z-index in modal */
+.leaflet-container {
+  z-index: 1;
+}

@@ -1,0 +1,58 @@
+import NextAuth from "next-auth"
+import Credentials from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3"
+import { PrismaClient } from "@/generated/prisma/client"
+import path from "path"
+import { authConfig } from "./auth.config"
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [
+    Credentials({
+      credentials: {
+        username: { label: "Uživatelské jméno", type: "text" },
+        password: { label: "Heslo", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) return null
+
+        const dbPath = path.join(process.cwd(), "dev.db")
+        const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` })
+        const db = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
+
+        try {
+          const user = await db.user.findUnique({
+            where: { username: credentials.username as string },
+          })
+          if (!user) return null
+
+          const valid = await bcrypt.compare(
+            credentials.password as string,
+            user.password
+          )
+          if (!valid) return null
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.username,
+          }
+        } finally {
+          await db.$disconnect()
+        }
+      },
+    }),
+  ],
+  session: { strategy: "jwt" },
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) token.id = user.id
+      return token
+    },
+    session({ session, token }) {
+      if (token.id) (session.user as { id?: string }).id = token.id as string
+      return session
+    },
+  },
+})
