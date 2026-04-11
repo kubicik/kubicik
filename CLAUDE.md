@@ -37,6 +37,8 @@ AUTH_SECRET=<random-string>         # NextAuth JWT secret
 - Import from `@/generated/prisma/client`, not `@prisma/client`
 - The adapter (`PrismaLibSql`) takes `{ url, authToken? }` directly — do **not** call `createClient()` manually
 
+The SQLite file is `dev.db` in the **project root**, not inside `prisma/`. The `prisma.config.ts` datasource URL resolves relative to `process.cwd()`, which is the project root during both build and runtime.
+
 `Trip.participants` is stored as a JSON string (`"[]"`). Parse/stringify at every API boundary — there is no ORM-level transform.
 
 ### Auth (NextAuth v5 beta)
