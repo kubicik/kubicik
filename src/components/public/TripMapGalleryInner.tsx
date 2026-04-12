@@ -5,6 +5,23 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap, Popup } from "react-
 import type { Icon, Map as LeafletMap } from "leaflet"
 import type { Stop } from "@/types"
 
+// Fit all stops into view on first load
+function BoundsFitter({ positions }: { positions: [number, number][] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (positions.length === 0) return
+    if (positions.length === 1) {
+      map.setView(positions[0], 12)
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require("leaflet") as typeof import("leaflet")
+    const bounds = L.latLngBounds(positions)
+    map.fitBounds(bounds, { padding: [40, 40], animate: false })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
+
 // Pan map to selected stop
 function MapPanner({ stop }: { stop: Stop | null }) {
   const map = useMap()
@@ -54,24 +71,13 @@ export default function TripMapGalleryInner({ stops, selectedStopId, onStopSelec
 
   const sorted = [...stops].sort((a, b) => a.order - b.order)
   const routePositions = sorted.map((s): [number, number] => [s.lat, s.lng])
-
-  // Bounds for initial view
-  const lats = sorted.map((s) => s.lat)
-  const lngs = sorted.map((s) => s.lng)
-  const bounds: [[number, number], [number, number]] | undefined =
-    sorted.length > 1
-      ? [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]]
-      : undefined
-
   const center: [number, number] = sorted.length > 0 ? [sorted[0].lat, sorted[0].lng] : [42, 74]
   const selectedStop = sorted.find((s) => s.id === selectedStopId) ?? null
 
   return (
     <MapContainer
       center={center}
-      zoom={sorted.length === 1 ? 10 : 5}
-      bounds={bounds}
-      boundsOptions={{ padding: [30, 30] }}
+      zoom={3}
       style={{ height: "100%", width: "100%" }}
       scrollWheelZoom={false}
     >
@@ -98,6 +104,7 @@ export default function TripMapGalleryInner({ stops, selectedStopId, onStopSelec
         </Marker>
       ))}
 
+      <BoundsFitter positions={routePositions} />
       <MapPanner stop={selectedStop} />
     </MapContainer>
   )
