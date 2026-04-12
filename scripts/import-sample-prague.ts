@@ -100,8 +100,22 @@ async function main() {
       data: {
         slug: SLUG,
         title: "Víkend v Praze",
+        country: "Česká republika",
+        tripType: "město",
         description:
           "Dva dny v srdci Čech – Staroměstské náměstí, Karlův most, Pražský hrad a klidné Vinohrady. Praha jako turistická destinace i jako živé město najednou.",
+        tips: JSON.stringify({
+          logistika: [
+            "Doprava: vlak nebo auto, centrum je snadno dostupné MHD.",
+            "Ubytování: Vinohrady nebo Žižkov – klidnější a levnější než centrum, metro do 10 minut.",
+            "Pražský hrad: kup lístek online, v sezoně jsou fronty obrovské.",
+          ],
+          pozor: [
+            "Turistické restaurace na Starém Městě jsou předražené – jdi ulici nebo dvě od náměstí.",
+            "Karlův most je nejklidnější brzy ráno (před 8h) nebo pozdě večer.",
+            "Oš bazar má v neděli zavřeno kvůli úklidu.",
+          ],
+        }),
         startDate: new Date("2024-05-10"),
         endDate: new Date("2024-05-11"),
         coverPhoto: "/uploads/covers/sample-prague.jpg",

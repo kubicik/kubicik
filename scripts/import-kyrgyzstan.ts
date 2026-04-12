@@ -409,8 +409,26 @@ async function main() {
       data: {
         slug: "2025-kyrgyzstan",
         title: "2025 Kyrgyzstan",
+        country: "Kyrgyzstán",
+        tripType: "roadtrip",
         description:
           "Rodinná cesta do Kyrgyzstánu – přes jezero Issyk-Kul, divoké kaňony, jezdecké stepi Son-Kulu až po daleké jezero Köl-Suu u čínských hranic. Čtrnáct dní, tři holky, jedno auto a spousta nezapomenutelných zážitků.",
+        tips: JSON.stringify({
+          logistika: [
+            "Čeští občané nepotřebují vízum – vstup je bezpoplatkový po dobu 30 dní.",
+            "Auto: doporučujeme pronájem 4WD v Biškeku (cca 80–120 $/den), naprostá nutnost pro Köl-Suu, Kol-Ukok nebo Ak-Sai kaňon.",
+            "Ubytování: mix jurtových kempů (Son-Kul, Köl-Suu), guesthouses a hotelů – vše rezervujte nejdříve den předem nebo na místě.",
+            "Platby: hotovost v somech, kartou téměř nikde. Výběr z bankomatu v Biškeku nebo Karakolu.",
+            "SIM karta: Beeline nebo O! – koupit na letišti hned po příletu, data fungují i v horách.",
+          ],
+          pozor: [
+            "Cesty: mnohé offroad trasy jsou na mapě označeny jako silnice – realita je jiná. Vždy ověřte aktuální stav.",
+            "Výšková nemoc: na Son-Kulu (3016 m) a Köl-Suu (3200 m) hrozí – první den netrekujte a pijte hodně vody.",
+            "Pohraničí s Čínou u Köl-Suu: nutný povolený pass (30 €/os. přes místní agenturu v Narynu).",
+            "Benzín: tankujte vždy, kde to jde – v horách čerpací stanice nejsou.",
+            "Počasí: v červenci teploty od 0 °C v noci na horách po 35 °C v Biškeku – balte na všechno.",
+          ],
+        }),
         startDate: new Date("2025-07-06"),
         endDate: new Date("2025-07-21"),
         participants: JSON.stringify(["Zbynek", "Věrka", "Ema", "Mája", "Míša"]),

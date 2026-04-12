@@ -31,6 +31,9 @@ export interface Trip {
   coverPhoto: string | null
   participants: string
   published: boolean
+  country: string | null
+  tripType: string | null
+  tips: string | null
   createdAt: string
   updatedAt: string
   stops?: Stop[]
