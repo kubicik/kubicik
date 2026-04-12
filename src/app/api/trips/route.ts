@@ -12,7 +12,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { title, description, startDate, endDate, coverPhoto, participants, published } = body
+  const { title, description, startDate, endDate, coverPhoto, participants, published, country, tripType, tips } = body
 
   if (!title || !startDate || !endDate) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
       coverPhoto: coverPhoto || null,
       participants: JSON.stringify(participants || []),
       published: published || false,
+      country: country || null,
+      tripType: tripType || null,
+      tips: tips || null,
     },
   })
 

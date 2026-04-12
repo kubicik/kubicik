@@ -15,12 +15,20 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </div>
             <span className="font-semibold text-[#1d1d1f] text-sm">Kubicik Travel</span>
           </Link>
-          <Link
-            href="/admin"
-            className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
-          >
-            Admin
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link
+              href="/participants"
+              className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
+            >
+              Účastníci
+            </Link>
+            <Link
+              href="/admin"
+              className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
+            >
+              Admin
+            </Link>
+          </div>
         </div>
       </header>
 

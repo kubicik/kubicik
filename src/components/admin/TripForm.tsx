@@ -4,6 +4,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
+const TRIP_TYPES = [
+  { value: "roadtrip", label: "Roadtrip" },
+  { value: "trekking", label: "Trekking" },
+  { value: "město", label: "Město" },
+  { value: "dobrodružství", label: "Dobrodružství" },
+]
+
 interface TripData {
   id?: string
   title: string
@@ -13,10 +20,13 @@ interface TripData {
   coverPhoto: string
   participants: string[]
   published: boolean
+  country: string
+  tripType: string
+  tips: { logistika: string[]; pozor: string[] }
 }
 
 interface Props {
-  initial?: TripData
+  initial?: Partial<TripData>
 }
 
 function toDateInput(val: string | Date | undefined): string {
@@ -24,6 +34,18 @@ function toDateInput(val: string | Date | undefined): string {
   const d = new Date(val)
   if (isNaN(d.getTime())) return ""
   return d.toISOString().split("T")[0]
+}
+
+function parseTips(raw: string): { logistika: string[]; pozor: string[] } {
+  try {
+    const parsed = JSON.parse(raw)
+    return {
+      logistika: Array.isArray(parsed.logistika) ? parsed.logistika : [],
+      pozor: Array.isArray(parsed.pozor) ? parsed.pozor : [],
+    }
+  } catch {
+    return { logistika: [], pozor: [] }
+  }
 }
 
 export default function TripForm({ initial }: Props) {
@@ -41,6 +63,14 @@ export default function TripForm({ initial }: Props) {
     (initial?.participants ?? []).join(", ")
   )
   const [published, setPublished] = useState(initial?.published ?? false)
+  const [country, setCountry] = useState(initial?.country ?? "")
+  const [tripType, setTripType] = useState(initial?.tripType ?? "")
+  const [tipsLogistika, setTipsLogistika] = useState(
+    (initial?.tips?.logistika ?? []).join("\n")
+  )
+  const [tipsPozor, setTipsPozor] = useState(
+    (initial?.tips?.pozor ?? []).join("\n")
+  )
 
   async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -65,7 +95,24 @@ export default function TripForm({ initial }: Props) {
       .map((s) => s.trim())
       .filter(Boolean)
 
-    const payload = { title, description, startDate, endDate, coverPhoto, participants, published }
+    const logistika = tipsLogistika.split("\n").map((s) => s.trim()).filter(Boolean)
+    const pozor = tipsPozor.split("\n").map((s) => s.trim()).filter(Boolean)
+    const tips = (logistika.length > 0 || pozor.length > 0)
+      ? JSON.stringify({ logistika, pozor })
+      : null
+
+    const payload = {
+      title,
+      description,
+      startDate,
+      endDate,
+      coverPhoto,
+      participants,
+      published,
+      country: country || null,
+      tripType: tripType || null,
+      tips,
+    }
 
     const url = initial?.id ? `/api/trips/${initial.id}` : "/api/trips"
     const method = initial?.id ? "PUT" : "POST"
@@ -97,11 +144,9 @@ export default function TripForm({ initial }: Props) {
         </div>
       )}
 
-      {/* Title */}
+      {/* Basic info */}
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
-        <h2 className="font-semibold text-[#1d1d1f] text-sm uppercase tracking-wide text-[#8e8e93]">
-          Základní informace
-        </h2>
+        <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Základní informace</h2>
         <div>
           <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Název výletu *</label>
           <input
@@ -121,6 +166,30 @@ export default function TripForm({ initial }: Props) {
             placeholder="Krátký popis výletu..."
             className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
           />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Země</label>
+            <input
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="Kyrgyzstán"
+              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Typ výletu</label>
+            <select
+              value={tripType}
+              onChange={(e) => setTripType(e.target.value)}
+              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
+            >
+              <option value="">— vyberte —</option>
+              {TRIP_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -156,7 +225,7 @@ export default function TripForm({ initial }: Props) {
         <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Účastníci</h2>
         <div>
           <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">
-            Jména účastníků <span className="text-[#8e8e93] font-normal">(oddělené čárkou)</span>
+            Jména <span className="text-[#8e8e93] font-normal">(oddělené čárkou)</span>
           </label>
           <input
             value={participantsStr}
@@ -196,6 +265,34 @@ export default function TripForm({ initial }: Props) {
           </span>
           <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={uploadingCover} />
         </label>
+      </div>
+
+      {/* Tips */}
+      <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
+        <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Praktické tipy</h2>
+        <p className="text-xs text-[#8e8e93]">Každý tip na samostatném řádku.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Logistika</label>
+            <textarea
+              value={tipsLogistika}
+              onChange={(e) => setTipsLogistika(e.target.value)}
+              rows={5}
+              placeholder={"Letiště Manas je 30 km od Biškeku\nVíza on-arrival pro EU"}
+              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Na co si dát pozor</label>
+            <textarea
+              value={tipsPozor}
+              onChange={(e) => setTipsPozor(e.target.value)}
+              rows={5}
+              placeholder={"Výšková nemoc nad 3 000 m\nHotovost — karty málokde"}
+              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Published */}

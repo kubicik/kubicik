@@ -50,6 +50,11 @@ export default async function EditTripPage({ params }: { params: Promise<{ id: s
           coverPhoto: trip.coverPhoto ?? "",
           participants,
           published: trip.published,
+          country: trip.country ?? "",
+          tripType: trip.tripType ?? "",
+          tips: (() => {
+            try { return JSON.parse(trip.tips ?? "{}") } catch { return { logistika: [], pozor: [] } }
+          })(),
         }}
       />
     </div>
