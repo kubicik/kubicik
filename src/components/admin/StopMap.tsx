@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   MapContainer,
   TileLayer,
@@ -9,20 +9,8 @@ import {
   useMapEvents,
   Popup,
 } from "react-leaflet"
-import type L from "leaflet"
+import type { Icon } from "leaflet"
 import type { Stop } from "@/types"
-
-// Fix Leaflet default marker icon
-function fixLeafletIcons() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const L = require("leaflet") as typeof import("leaflet")
-  delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconUrl: "/leaflet/marker-icon.png",
-    iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-    shadowUrl: "/leaflet/marker-shadow.png",
-  })
-}
 
 function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
@@ -48,29 +36,41 @@ export default function StopMap({
   onMarkerClick,
   selectedStopId,
 }: Props) {
+  const selectedIconRef = useRef<Icon | null>(null)
+  const [iconsReady, setIconsReady] = useState(false)
+
   useEffect(() => {
-    fixLeafletIcons()
+    // All Leaflet initialisation runs only in the browser
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require("leaflet") as typeof import("leaflet")
+
+    // Fix default marker icons
+    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconUrl: "/leaflet/marker-icon.png",
+      iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+      shadowUrl: "/leaflet/marker-shadow.png",
+    })
+
+    // Selected (highlighted) marker icon
+    selectedIconRef.current = new L.Icon({
+      iconUrl: "/leaflet/marker-icon-2x.png",
+      shadowUrl: "/leaflet/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    })
+
+    setIconsReady(true)
   }, [])
 
   const sorted = [...stops].sort((a, b) => a.order - b.order)
   const routePositions = sorted.map((s): [number, number] => [s.lat, s.lng])
   if (pendingLatLng) routePositions.push([pendingLatLng.lat, pendingLatLng.lng])
 
-  // Center: use first stop or central Asia default
   const center: [number, number] =
     stops.length > 0 ? [stops[0].lat, stops[0].lng] : [42.0, 74.0]
-
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const L = require("leaflet") as typeof import("leaflet")
-
-  const selectedIcon = new L.Icon({
-    iconUrl: "/leaflet/marker-icon-2x.png",
-    shadowUrl: "/leaflet/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  })
 
   return (
     <MapContainer
@@ -92,7 +92,11 @@ export default function StopMap({
         <Marker
           key={stop.id}
           position={[stop.lat, stop.lng]}
-          icon={stop.id === selectedStopId ? selectedIcon : undefined}
+          icon={
+            iconsReady && stop.id === selectedStopId && selectedIconRef.current
+              ? selectedIconRef.current
+              : undefined
+          }
           eventHandlers={{ click: () => onMarkerClick(stop) }}
         >
           <Popup>
