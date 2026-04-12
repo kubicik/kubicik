@@ -47,6 +47,10 @@ next-env.d.ts
 *.db-shm
 *.db-wal
 
-# Uploaded files
+# Uploaded files — user uploads are excluded, sample/demo files are committed
 /public/uploads/**/*
 !/public/uploads/.gitkeep
+!/public/uploads/covers/
+!/public/uploads/covers/sample-*.jpg
+!/public/uploads/stops/
+!/public/uploads/stops/sample-*.jpg
