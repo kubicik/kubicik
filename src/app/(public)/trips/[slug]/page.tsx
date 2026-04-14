@@ -89,6 +89,14 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
               priority
               className="object-cover"
               sizes="100vw"
+              style={(() => {
+                try {
+                  const f = JSON.parse(trip.coverPhotoFocus ?? "{}") as { x?: number; y?: number }
+                  if (typeof f.x === "number" && typeof f.y === "number")
+                    return { objectPosition: `${f.x * 100}% ${f.y * 100}%` }
+                } catch { /* default center */ }
+                return {}
+              })()}
             />
           </div>
         ) : (

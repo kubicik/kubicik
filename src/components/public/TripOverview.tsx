@@ -15,6 +15,7 @@ interface TripData {
   startDate: string
   endDate: string
   coverPhoto: string | null
+  coverPhotoFocus: string | null
   participants: string[]
   stopCount: number
   country: string | null

@@ -37,6 +37,7 @@ export default async function HomePage() {
       startDate: trip.startDate.toISOString(),
       endDate: trip.endDate.toISOString(),
       coverPhoto: trip.coverPhoto,
+      coverPhotoFocus: trip.coverPhotoFocus,
       participants,
       stopCount: trip._count.stops,
       country: trip.country,

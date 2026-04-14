@@ -1,9 +1,67 @@
 "use client"
 
-import { useState, useRef, KeyboardEvent } from "react"
+import { useState, useRef, KeyboardEvent, MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { compressImage } from "@/lib/compressImage"
+
+type Focus = { x: number; y: number }
+
+function FocalPointPicker({ src, value, onChange }: {
+  src: string
+  value: Focus
+  onChange: (v: Focus) => void
+}) {
+  function handleClick(e: MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    onChange({
+      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
+    })
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs text-[#8e8e93]">
+        Klikněte na obrázek pro nastavení středu ořezu
+        <span className="ml-2 font-mono text-[#c7c7cc]">
+          ({Math.round(value.x * 100)}% {Math.round(value.y * 100)}%)
+        </span>
+      </p>
+      <div
+        className="relative w-full overflow-hidden rounded-xl cursor-crosshair select-none"
+        style={{ aspectRatio: "21/9" }}
+        onClick={handleClick}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ objectPosition: `${value.x * 100}% ${value.y * 100}%` }}
+        />
+        {/* focal point dot */}
+        <div
+          className="absolute w-6 h-6 rounded-full border-2 border-white shadow-lg pointer-events-none"
+          style={{
+            left: `${value.x * 100}%`,
+            top: `${value.y * 100}%`,
+            transform: "translate(-50%, -50%)",
+            background: "rgba(0,122,255,0.7)",
+            boxShadow: "0 0 0 1px rgba(0,122,255,0.4), 0 2px 8px rgba(0,0,0,0.3)",
+          }}
+        />
+        {/* crosshair lines */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)`,
+          backgroundSize: "33.33% 33.33%",
+        }} />
+      </div>
+    </div>
+  )
+}
 
 const TRIP_TYPES = [
   { value: "roadtrip", label: "Roadtrip" },
@@ -92,6 +150,7 @@ interface TripData {
   startDate: string
   endDate: string
   coverPhoto: string
+  coverPhotoFocus: Focus
   participants: string[]
   published: boolean
   country: string
@@ -121,6 +180,9 @@ export default function TripForm({ initial }: Props) {
   const [startDate, setStartDate] = useState(toDateInput(initial?.startDate))
   const [endDate, setEndDate] = useState(toDateInput(initial?.endDate))
   const [coverPhoto, setCoverPhoto] = useState(initial?.coverPhoto ?? "")
+  const [coverPhotoFocus, setCoverPhotoFocus] = useState<Focus>(
+    initial?.coverPhotoFocus ?? { x: 0.5, y: 0.5 }
+  )
   const [participants, setParticipants] = useState<string[]>(initial?.participants ?? [])
   const [published, setPublished] = useState(initial?.published ?? false)
   const [country, setCountry] = useState(initial?.country ?? "")
@@ -169,6 +231,7 @@ export default function TripForm({ initial }: Props) {
       startDate,
       endDate,
       coverPhoto,
+      coverPhotoFocus: coverPhoto ? JSON.stringify(coverPhotoFocus) : null,
       participants,
       published,
       country: country || null,
@@ -299,18 +362,21 @@ export default function TripForm({ initial }: Props) {
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
         <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Titulní fotografie</h2>
         {coverPhoto && (
-          <div className="relative w-full h-48 rounded-xl overflow-hidden">
-            <Image src={coverPhoto} alt="Cover" fill className="object-cover" />
-            <button
-              type="button"
-              onClick={() => setCoverPhoto("")}
-              className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors"
-            >
-              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <>
+            <div className="relative w-full h-36 rounded-xl overflow-hidden">
+              <Image src={coverPhoto} alt="Cover" fill className="object-cover" />
+              <button
+                type="button"
+                onClick={() => setCoverPhoto("")}
+                className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors"
+              >
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <FocalPointPicker src={coverPhoto} value={coverPhotoFocus} onChange={setCoverPhotoFocus} />
+          </>
         )}
         <label className={`flex flex-col items-center justify-center gap-2 h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
           uploadingCover ? "border-[#007aff] bg-[#f0f6ff]" : "border-[#c7c7cc] hover:border-[#007aff] hover:bg-[#f9f9f9]"

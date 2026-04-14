@@ -17,6 +17,7 @@ interface TripCardProps {
     startDate: string
     endDate: string
     coverPhoto: string | null
+    coverPhotoFocus: string | null
     participants: string[]
     stopCount: number
     country: string | null
@@ -24,6 +25,16 @@ interface TripCardProps {
     year: number
   }
   isSelected?: boolean
+}
+
+function focusStyle(raw: string | null): React.CSSProperties {
+  try {
+    const f = JSON.parse(raw ?? "{}") as { x?: number; y?: number }
+    if (typeof f.x === "number" && typeof f.y === "number") {
+      return { objectPosition: `${f.x * 100}% ${f.y * 100}%` }
+    }
+  } catch { /* default */ }
+  return {}
 }
 
 function getDays(start: string, end: string): number {
@@ -51,6 +62,7 @@ export default function TripCard({ trip, isSelected }: TripCardProps) {
             alt={trip.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500"
+            style={focusStyle(trip.coverPhotoFocus)}
           />
         ) : (
           <div className="flex items-center justify-center h-full">

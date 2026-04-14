@@ -48,6 +48,9 @@ export default async function EditTripPage({ params }: { params: Promise<{ id: s
           startDate: trip.startDate.toISOString(),
           endDate: trip.endDate.toISOString(),
           coverPhoto: trip.coverPhoto ?? "",
+          coverPhotoFocus: (() => {
+            try { return JSON.parse(trip.coverPhotoFocus ?? "{}") } catch { return { x: 0.5, y: 0.5 } }
+          })(),
           participants,
           published: trip.published,
           country: trip.country ?? "",
