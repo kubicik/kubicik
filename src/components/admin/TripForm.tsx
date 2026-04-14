@@ -3,6 +3,7 @@
 import { useState, useRef, KeyboardEvent } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { compressImage } from "@/lib/compressImage"
 
 const TRIP_TYPES = [
   { value: "roadtrip", label: "Roadtrip" },
@@ -135,8 +136,9 @@ export default function TripForm({ initial }: Props) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingCover(true)
+    const compressed = await compressImage(file, "covers")
     const fd = new FormData()
-    fd.append("file", file)
+    fd.append("file", compressed)
     fd.append("type", "covers")
     const res = await fetch("/api/upload", { method: "POST", body: fd })
     const data = await res.json()

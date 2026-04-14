@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import dynamic from "next/dynamic"
 import type { Stop, Photo } from "@/types"
 import StopForm from "./StopForm"
+import { compressImage } from "@/lib/compressImage"
 
 const StopMap = dynamic(() => import("./StopMap"), { ssr: false })
 
@@ -75,8 +76,9 @@ export default function StopEditor({ tripId, initialStops }: Props) {
   }
 
   async function handleAddPhoto(stopId: string, file: File) {
+    const compressed = await compressImage(file, "stops")
     const fd = new FormData()
-    fd.append("file", file)
+    fd.append("file", compressed)
     fd.append("type", "stops")
     const uploadRes = await fetch("/api/upload", { method: "POST", body: fd })
     const { url } = await uploadRes.json()
