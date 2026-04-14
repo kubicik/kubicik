@@ -5,7 +5,16 @@ import Link from "next/link"
 
 export default async function EditTripPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const trip = await prisma.trip.findUnique({ where: { id } })
+
+  let trip
+  try {
+    trip = await prisma.trip.findUnique({ where: { id } })
+  } catch (err) {
+    throw new Error(
+      `Nepodařilo se načíst výlet z databáze: ${err instanceof Error ? err.message : String(err)}`
+    )
+  }
+
   if (!trip) notFound()
 
   const participants = (() => {

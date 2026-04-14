@@ -6,15 +6,24 @@ import type { Stop, Photo } from "@/types"
 
 export default async function ManageStopsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const trip = await prisma.trip.findUnique({
-    where: { id },
-    include: {
-      stops: {
-        orderBy: { order: "asc" },
-        include: { photos: { orderBy: { order: "asc" } } },
+
+  let trip
+  try {
+    trip = await prisma.trip.findUnique({
+      where: { id },
+      include: {
+        stops: {
+          orderBy: { order: "asc" },
+          include: { photos: { orderBy: { order: "asc" } } },
+        },
       },
-    },
-  })
+    })
+  } catch (err) {
+    throw new Error(
+      `Nepodařilo se načíst výlet z databáze: ${err instanceof Error ? err.message : String(err)}`
+    )
+  }
+
   if (!trip) notFound()
 
   // Serialize for client component
