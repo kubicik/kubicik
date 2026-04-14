@@ -26,12 +26,28 @@ export async function POST(request: NextRequest) {
 
     // Vercel Blob in production
     if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const { put } = await import("@vercel/blob")
-      const blob = await put(`uploads/${uploadType}/${filename}`, file, { access: "public" })
-      return NextResponse.json({ url: blob.url })
+      try {
+        const { put } = await import("@vercel/blob")
+        const blob = await put(`uploads/${uploadType}/${filename}`, file, { access: "public" })
+        return NextResponse.json({ url: blob.url })
+      } catch (blobErr) {
+        console.error("Vercel Blob upload error:", blobErr)
+        return NextResponse.json(
+          { error: `Blob upload failed: ${blobErr instanceof Error ? blobErr.message : String(blobErr)}` },
+          { status: 500 }
+        )
+      }
     }
 
-    // Local filesystem fallback
+    // Vercel runtime without Blob configured → clear 503 instead of cryptic FS error
+    if (process.env.VERCEL) {
+      return NextResponse.json(
+        { error: "File storage is not configured. Set BLOB_READ_WRITE_TOKEN in Vercel environment variables." },
+        { status: 503 }
+      )
+    }
+
+    // Local filesystem fallback (development only)
     const { writeFile, mkdir } = await import("fs/promises")
     const path = await import("path")
     const uploadDir = path.join(process.cwd(), "public", "uploads", uploadType)
@@ -41,6 +57,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: `/uploads/${uploadType}/${filename}` })
   } catch (err) {
     console.error("Upload error:", err)
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 })
+    return NextResponse.json(
+      { error: `Upload failed: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 }
+    )
   }
 }

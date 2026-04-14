@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "npx tsx scripts/migrate.ts && npx tsx prisma/seed.ts && npx tsx scripts/import-kyrgyzstan.ts && npx tsx scripts/import-sample-prague.ts && next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint",
     "db:seed": "npx tsx prisma/seed.ts",
     "postinstall": "prisma generate"
@@ -34,10 +36,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.4"
   }
 }
