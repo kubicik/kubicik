@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["@libsql/client", "@prisma/adapter-libsql", "@prisma/client"],
+  serverExternalPackages: ["@libsql/client", "@prisma/adapter-libsql", "@prisma/client", "sharp"],
 }
 
 export default nextConfig
