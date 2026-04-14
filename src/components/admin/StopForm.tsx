@@ -107,10 +107,16 @@ export default function StopForm({
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Co jsme tu dělali..."
-            rows={3}
-            className="w-full px-3 py-2 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
+            placeholder="Co jsme tu dělali, co nás zaujalo…"
+            rows={7}
+            className="w-full px-3 py-2 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-y"
           />
+          <p className="text-[10px] text-[#8e8e93] mt-1 leading-tight">
+            Prázdný řádek = odstavec.{" "}
+            <span className="font-mono">**tučně**</span>
+            {" · "}
+            <span className="font-mono">*kurzíva*</span>
+          </p>
         </div>
 
         <div className="flex gap-2">

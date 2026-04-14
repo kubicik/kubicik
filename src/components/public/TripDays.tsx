@@ -10,6 +10,16 @@ interface DayGroup {
   dayIndex: number
 }
 
+function renderText(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**"))
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    if (part.startsWith("*") && part.endsWith("*"))
+      return <em key={i}>{part.slice(1, -1)}</em>
+    return part
+  })
+}
+
 function groupByDay(stops: Stop[]): DayGroup[] {
   const map = new Map<string, Stop[]>()
   for (const stop of stops) {
@@ -119,7 +129,7 @@ export default function TripDays({ stops }: Props) {
                         </h4>
                         {stop.description && (
                           <p className="text-[#3a3a3c] text-sm leading-[1.8] mb-4 whitespace-pre-line">
-                            {stop.description}
+                            {renderText(stop.description)}
                           </p>
                         )}
                         {(stop.photos?.length ?? 0) > 0 && (

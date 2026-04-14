@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,25 +11,31 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"]
-    if (!allowedTypes.includes(file.type)) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 })
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
     const uploadType = ["covers", "stops"].includes(type) ? type : "stops"
-    const uploadDir = path.join(process.cwd(), "public", "uploads", uploadType)
-    await mkdir(uploadDir, { recursive: true })
-
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const filename = `${Date.now()}-${safeName}`
-    await writeFile(path.join(uploadDir, filename), buffer)
 
+    // Vercel Blob in production (BLOB_READ_WRITE_TOKEN set by Vercel)
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const { put } = await import("@vercel/blob")
+      const blob = await put(`uploads/${uploadType}/${filename}`, file, { access: "public" })
+      return NextResponse.json({ url: blob.url })
+    }
+
+    // Local filesystem fallback for development
+    const { writeFile, mkdir } = await import("fs/promises")
+    const path = await import("path")
+    const uploadDir = path.join(process.cwd(), "public", "uploads", uploadType)
+    await mkdir(uploadDir, { recursive: true })
+    const buffer = Buffer.from(await file.arrayBuffer())
+    await writeFile(path.join(uploadDir, filename), buffer)
     return NextResponse.json({ url: `/uploads/${uploadType}/${filename}` })
-  } catch {
+  } catch (err) {
+    console.error("Upload error:", err)
     return NextResponse.json({ error: "Upload failed" }, { status: 500 })
   }
 }

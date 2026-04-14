@@ -128,7 +128,7 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
           </p>
 
           {trip.description && (
-            <p className="text-lg text-[#3a3a3c] leading-[1.75] max-w-2xl">
+            <p className="text-lg text-[#3a3a3c] leading-[1.75] max-w-2xl whitespace-pre-line">
               {trip.description}
             </p>
           )}

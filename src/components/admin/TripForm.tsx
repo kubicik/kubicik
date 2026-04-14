@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, KeyboardEvent } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
@@ -11,6 +11,79 @@ const TRIP_TYPES = [
   { value: "dobrodružství", label: "Dobrodružství" },
 ]
 
+// ── Participant chips ────────────────────────────────────────────────────────
+function ParticipantChips({
+  value,
+  onChange,
+}: {
+  value: string[]
+  onChange: (v: string[]) => void
+}) {
+  const [input, setInput] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function add(name: string) {
+    const trimmed = name.trim()
+    if (trimmed && !value.includes(trimmed)) onChange([...value, trimmed])
+    setInput("")
+  }
+
+  function remove(name: string) {
+    onChange(value.filter((v) => v !== name))
+  }
+
+  function handleKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault()
+      add(input)
+    } else if (e.key === "Backspace" && input === "" && value.length > 0) {
+      remove(value[value.length - 1])
+    }
+  }
+
+  return (
+    <div
+      className="flex flex-wrap gap-1.5 min-h-[42px] px-3 py-2 bg-[#f2f2f7] rounded-xl cursor-text focus-within:ring-2 focus-within:ring-[#007aff] transition-shadow"
+      onClick={() => inputRef.current?.focus()}
+    >
+      {value.map((name) => (
+        <span
+          key={name}
+          className="flex items-center gap-1 bg-white border border-[#e5e5ea] text-[#1d1d1f] text-sm px-2 py-0.5 rounded-full"
+        >
+          {name}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); remove(name) }}
+            className="text-[#8e8e93] hover:text-[#ff3b30] transition-colors leading-none"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKey}
+        onBlur={() => { if (input.trim()) add(input) }}
+        placeholder={value.length === 0 ? "Jméno, Enter pro přidání…" : ""}
+        className="flex-1 min-w-[120px] bg-transparent text-[#1d1d1f] text-sm outline-none placeholder:text-[#8e8e93]"
+      />
+    </div>
+  )
+}
+
+// ── Formatting hint ──────────────────────────────────────────────────────────
+function FormatHint() {
+  return (
+    <p className="text-xs text-[#8e8e93] mt-1.5">
+      Prázdný řádek = nový odstavec. Tučně: <code className="bg-[#f2f2f7] px-1 rounded">**text**</code>, kurzíva: <code className="bg-[#f2f2f7] px-1 rounded">*text*</code>
+    </p>
+  )
+}
+
+// ── Main form ────────────────────────────────────────────────────────────────
 interface TripData {
   id?: string
   title: string
@@ -36,18 +109,6 @@ function toDateInput(val: string | Date | undefined): string {
   return d.toISOString().split("T")[0]
 }
 
-function parseTips(raw: string): { logistika: string[]; pozor: string[] } {
-  try {
-    const parsed = JSON.parse(raw)
-    return {
-      logistika: Array.isArray(parsed.logistika) ? parsed.logistika : [],
-      pozor: Array.isArray(parsed.pozor) ? parsed.pozor : [],
-    }
-  } catch {
-    return { logistika: [], pozor: [] }
-  }
-}
-
 export default function TripForm({ initial }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -59,9 +120,7 @@ export default function TripForm({ initial }: Props) {
   const [startDate, setStartDate] = useState(toDateInput(initial?.startDate))
   const [endDate, setEndDate] = useState(toDateInput(initial?.endDate))
   const [coverPhoto, setCoverPhoto] = useState(initial?.coverPhoto ?? "")
-  const [participantsStr, setParticipantsStr] = useState(
-    (initial?.participants ?? []).join(", ")
-  )
+  const [participants, setParticipants] = useState<string[]>(initial?.participants ?? [])
   const [published, setPublished] = useState(initial?.published ?? false)
   const [country, setCountry] = useState(initial?.country ?? "")
   const [tripType, setTripType] = useState(initial?.tripType ?? "")
@@ -89,11 +148,6 @@ export default function TripForm({ initial }: Props) {
     e.preventDefault()
     setLoading(true)
     setError("")
-
-    const participants = participantsStr
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
 
     const logistika = tipsLogistika.split("\n").map((s) => s.trim()).filter(Boolean)
     const pozor = tipsPozor.split("\n").map((s) => s.trim()).filter(Boolean)
@@ -147,6 +201,7 @@ export default function TripForm({ initial }: Props) {
       {/* Basic info */}
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
         <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Základní informace</h2>
+
         <div>
           <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Název výletu *</label>
           <input
@@ -157,16 +212,19 @@ export default function TripForm({ initial }: Props) {
             className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
           />
         </div>
+
         <div>
           <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Popis</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            placeholder="Krátký popis výletu..."
-            className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
+            rows={5}
+            placeholder="Krátký popis výletu — zobrazí se na kartičce i v detailu…"
+            className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-y"
           />
+          <FormatHint />
         </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Země</label>
@@ -224,15 +282,8 @@ export default function TripForm({ initial }: Props) {
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
         <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Účastníci</h2>
         <div>
-          <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">
-            Jména <span className="text-[#8e8e93] font-normal">(oddělené čárkou)</span>
-          </label>
-          <input
-            value={participantsStr}
-            onChange={(e) => setParticipantsStr(e.target.value)}
-            placeholder="Zbyněk, Jana, Petr"
-            className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
-          />
+          <ParticipantChips value={participants} onChange={setParticipants} />
+          <p className="text-xs text-[#8e8e93] mt-1.5">Enter nebo čárka přidá jméno, Backspace odstraní poslední.</p>
         </div>
       </div>
 
@@ -261,7 +312,7 @@ export default function TripForm({ initial }: Props) {
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span className="text-[#8e8e93] text-sm">
-            {uploadingCover ? "Nahrávám..." : "Klikněte pro výběr fotografie"}
+            {uploadingCover ? "Nahrávám…" : "Klikněte pro výběr fotografie"}
           </span>
           <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={uploadingCover} />
         </label>
@@ -270,16 +321,16 @@ export default function TripForm({ initial }: Props) {
       {/* Tips */}
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
         <h2 className="text-sm font-medium text-[#8e8e93] uppercase tracking-wide">Praktické tipy</h2>
-        <p className="text-xs text-[#8e8e93]">Každý tip na samostatném řádku.</p>
+        <p className="text-xs text-[#8e8e93] -mt-2">Každý tip na samostatném řádku.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Logistika</label>
             <textarea
               value={tipsLogistika}
               onChange={(e) => setTipsLogistika(e.target.value)}
-              rows={5}
-              placeholder={"Letiště Manas je 30 km od Biškeku\nVíza on-arrival pro EU"}
-              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
+              rows={6}
+              placeholder={"Letiště Manas je 30 km od Biškeku\nVíza on-arrival pro EU\nSIM karta na letišti"}
+              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-y"
             />
           </div>
           <div>
@@ -287,9 +338,9 @@ export default function TripForm({ initial }: Props) {
             <textarea
               value={tipsPozor}
               onChange={(e) => setTipsPozor(e.target.value)}
-              rows={5}
-              placeholder={"Výšková nemoc nad 3 000 m\nHotovost — karty málokde"}
-              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-none"
+              rows={6}
+              placeholder={"Výšková nemoc nad 3 000 m\nHotovost — karty málokde\nSlunce na jihu velmi silné"}
+              className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-y"
             />
           </div>
         </div>
@@ -312,7 +363,7 @@ export default function TripForm({ initial }: Props) {
       </div>
 
       {/* Submit */}
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex items-center justify-end gap-3 pb-4">
         <button
           type="button"
           onClick={() => router.back()}
@@ -325,7 +376,7 @@ export default function TripForm({ initial }: Props) {
           disabled={loading}
           className="px-5 py-2.5 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Ukládám..." : initial?.id ? "Uložit změny" : "Vytvořit výlet"}
+          {loading ? "Ukládám…" : initial?.id ? "Uložit změny" : "Vytvořit výlet"}
         </button>
       </div>
     </form>

@@ -3,8 +3,13 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
   images: {
     localPatterns: [
+      { pathname: "/uploads/**" },
+    ],
+    remotePatterns: [
       {
-        pathname: "/uploads/**",
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        pathname: "/**",
       },
     ],
   },
