@@ -24,11 +24,18 @@ export async function POST(request: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const filename = `${Date.now()}-${safeName}`
 
+    // Read file into Buffer once — needed for both storage paths
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const contentType = file.type || "image/webp"
+
     // Vercel Blob in production
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       try {
         const { put } = await import("@vercel/blob")
-        const blob = await put(`uploads/${uploadType}/${filename}`, file, { access: "public" })
+        const blob = await put(`uploads/${uploadType}/${filename}`, buffer, {
+          access: "public",
+          contentType,
+        })
         return NextResponse.json({ url: blob.url })
       } catch (blobErr) {
         console.error("Vercel Blob upload error:", blobErr)
@@ -52,7 +59,6 @@ export async function POST(request: NextRequest) {
     const path = await import("path")
     const uploadDir = path.join(process.cwd(), "public", "uploads", uploadType)
     await mkdir(uploadDir, { recursive: true })
-    const buffer = Buffer.from(await file.arrayBuffer())
     await writeFile(path.join(uploadDir, filename), buffer)
     return NextResponse.json({ url: `/uploads/${uploadType}/${filename}` })
   } catch (err) {

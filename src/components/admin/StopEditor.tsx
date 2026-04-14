@@ -76,9 +76,14 @@ export default function StopEditor({ tripId, initialStops }: Props) {
   }
 
   async function handleAddPhoto(stopId: string, file: File) {
-    const compressed = await compressImage(file, "stops")
+    let toUpload: File
+    try {
+      toUpload = await compressImage(file, "stops")
+    } catch {
+      toUpload = file // compression failed — upload original, server validates size
+    }
     const fd = new FormData()
-    fd.append("file", compressed)
+    fd.append("file", toUpload)
     fd.append("type", "stops")
     const uploadRes = await fetch("/api/upload", { method: "POST", body: fd })
     const { url } = await uploadRes.json()

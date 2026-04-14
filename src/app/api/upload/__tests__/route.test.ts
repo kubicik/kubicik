@@ -101,6 +101,9 @@ describe("Vercel Blob path (BLOB_READ_WRITE_TOKEN set)", () => {
     const body = await res.json()
     expect(body.url).toBe("https://example.public.blob.vercel-storage.com/test.webp")
     expect(mockPut).toHaveBeenCalledOnce()
+    // put() must receive a Buffer (not a File/stream) — required for Vercel serverless
+    const [, bodyArg] = mockPut.mock.calls[0]
+    expect(Buffer.isBuffer(bodyArg)).toBe(true)
   })
 
   it("returns 500 with error message when put() throws", async () => {
