@@ -219,46 +219,49 @@ export default function TripForm({ initial }: Props) {
     setLoading(true)
     setError("")
 
-    const logistika = tipsLogistika.split("\n").map((s) => s.trim()).filter(Boolean)
-    const pozor = tipsPozor.split("\n").map((s) => s.trim()).filter(Boolean)
-    const tips = (logistika.length > 0 || pozor.length > 0)
-      ? JSON.stringify({ logistika, pozor })
-      : null
+    try {
+      const logistika = tipsLogistika.split("\n").map((s) => s.trim()).filter(Boolean)
+      const pozor = tipsPozor.split("\n").map((s) => s.trim()).filter(Boolean)
+      const tips = (logistika.length > 0 || pozor.length > 0)
+        ? JSON.stringify({ logistika, pozor })
+        : null
 
-    const payload = {
-      title,
-      description,
-      startDate,
-      endDate,
-      coverPhoto,
-      coverPhotoFocus: coverPhoto ? JSON.stringify(coverPhotoFocus) : null,
-      participants,
-      published,
-      country: country || null,
-      tripType: tripType || null,
-      tips,
+      const payload = {
+        title,
+        description,
+        startDate,
+        endDate,
+        coverPhoto,
+        coverPhotoFocus: coverPhoto ? JSON.stringify(coverPhotoFocus) : null,
+        participants,
+        published,
+        country: country || null,
+        tripType: tripType || null,
+        tips,
+      }
+
+      const url = initial?.id ? `/api/trips/${initial.id}` : "/api/trips"
+      const method = initial?.id ? "PUT" : "POST"
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || "Chyba při ukládání")
+        return
+      }
+
+      const trip = await res.json()
+      router.push(`/admin/trips/${trip.id}/stops`)
+    } catch (err) {
+      setError(`Chyba: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setLoading(false)
     }
-
-    const url = initial?.id ? `/api/trips/${initial.id}` : "/api/trips"
-    const method = initial?.id ? "PUT" : "POST"
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-
-    setLoading(false)
-
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error || "Chyba při ukládání")
-      return
-    }
-
-    const trip = await res.json()
-    router.push(`/admin/trips/${trip.id}/stops`)
-    router.refresh()
   }
 
   return (
