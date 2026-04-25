@@ -4,6 +4,27 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import type { Stop } from "@/types"
 
+// Renders **bold**, *italic*, blank-line paragraphs — same rules as TripDays
+function renderMarkdown(text: string): React.ReactNode {
+  if (!text.trim()) return <span className="text-[#c7c7cc] italic text-xs">Žádný popis</span>
+  return text.split(/\n\n+/).map((para, pi) => (
+    <p key={pi} className={pi > 0 ? "mt-3" : ""}>
+      {para.split(/\n/).map((line, li, arr) => (
+        <span key={li}>
+          {line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).map((seg, si) => {
+            if (seg.startsWith("**") && seg.endsWith("**"))
+              return <strong key={si}>{seg.slice(2, -2)}</strong>
+            if (seg.startsWith("*") && seg.endsWith("*"))
+              return <em key={si}>{seg.slice(1, -1)}</em>
+            return seg
+          })}
+          {li < arr.length - 1 && <br />}
+        </span>
+      ))}
+    </p>
+  ))
+}
+
 interface Props {
   stop: Stop | null
   isNew: boolean
@@ -35,6 +56,7 @@ export default function StopForm({
   const [date, setDate] = useState("")
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [descTab, setDescTab] = useState<"edit" | "preview">("edit")
 
   useEffect(() => {
     if (stop) {
@@ -46,6 +68,7 @@ export default function StopForm({
       setDescription("")
       setDate("")
     }
+    setDescTab("edit")
   }, [stop?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e: React.FormEvent) {
@@ -104,18 +127,50 @@ export default function StopForm({
           />
         </div>
         <div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Co jsme tu dělali, co nás zaujalo…"
-            rows={7}
-            className="w-full px-3 py-2 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-y"
-          />
-          <p className="text-[10px] text-[#8e8e93] mt-1 leading-tight">
-            Prázdný řádek = odstavec.{" "}
-            <span className="font-mono">**tučně**</span>
-            {" · "}
-            <span className="font-mono">*kurzíva*</span>
+          {/* Edit / Preview tabs */}
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex rounded-lg bg-[#f2f2f7] p-0.5 gap-0.5">
+              <button
+                type="button"
+                onClick={() => setDescTab("edit")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  descTab === "edit"
+                    ? "bg-white text-[#1d1d1f] shadow-sm"
+                    : "text-[#8e8e93] hover:text-[#3a3a3c]"
+                }`}
+              >
+                Upravit
+              </button>
+              <button
+                type="button"
+                onClick={() => setDescTab("preview")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  descTab === "preview"
+                    ? "bg-white text-[#1d1d1f] shadow-sm"
+                    : "text-[#8e8e93] hover:text-[#3a3a3c]"
+                }`}
+              >
+                Náhled
+              </button>
+            </div>
+            <span className="text-[10px] text-[#c7c7cc] font-mono">**tučně** · *kurzíva*</span>
+          </div>
+
+          {descTab === "edit" ? (
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Co jsme tu dělali, co nás zaujalo…"
+              rows={12}
+              className="w-full px-3 py-2 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow resize-y"
+            />
+          ) : (
+            <div className="min-h-[196px] px-3 py-2 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm leading-relaxed">
+              {renderMarkdown(description)}
+            </div>
+          )}
+          <p className="text-[10px] text-[#8e8e93] mt-1">
+            Prázdný řádek = nový odstavec
           </p>
         </div>
 
