@@ -50,6 +50,8 @@ model Stop {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  tags        String?
+
   photos Photo[]
 }
 

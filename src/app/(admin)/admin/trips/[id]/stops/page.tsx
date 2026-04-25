@@ -36,6 +36,7 @@ export default async function ManageStopsPage({ params }: { params: Promise<{ id
     lat: s.lat,
     lng: s.lng,
     order: s.order,
+    tags: s.tags,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
     photos: s.photos.map((p): Photo => ({

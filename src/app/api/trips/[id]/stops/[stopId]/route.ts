@@ -7,7 +7,7 @@ export async function PUT(
 ) {
   const { stopId } = await params
   const body = await request.json()
-  const { title, description, date, lat, lng, order } = body
+  const { title, description, date, lat, lng, order, tags } = body
 
   const stop = await prisma.stop.update({
     where: { id: stopId },
@@ -18,6 +18,7 @@ export async function PUT(
       lat,
       lng,
       order: order ?? 0,
+      tags: tags || null,
     },
     include: { photos: { orderBy: { order: "asc" } } },
   })

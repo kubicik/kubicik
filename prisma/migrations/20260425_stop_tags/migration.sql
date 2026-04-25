@@ -1,0 +1,1 @@
+ALTER TABLE "Stop" ADD COLUMN "tags" TEXT;

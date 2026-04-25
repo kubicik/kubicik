@@ -16,6 +16,7 @@ export interface Stop {
   lat: number
   lng: number
   order: number
+  tags: string | null
   createdAt: string
   updatedAt: string
   photos?: Photo[]
