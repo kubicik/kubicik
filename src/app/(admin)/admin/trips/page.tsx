@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import TripListActions from "@/components/admin/TripListActions"
+import TripImportButton from "@/components/admin/TripImportButton"
 
 export default async function AdminTripsPage() {
   const trips = await prisma.trip.findMany({
@@ -15,15 +16,18 @@ export default async function AdminTripsPage() {
           <h1 className="text-2xl font-semibold text-[#1d1d1f]">Výlety</h1>
           <p className="text-[#8e8e93] text-sm mt-0.5">{trips.length} výletů celkem</p>
         </div>
-        <Link
-          href="/admin/trips/new"
-          className="flex items-center gap-2 px-4 py-2 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nový výlet
-        </Link>
+        <div className="flex items-center gap-2">
+          <TripImportButton />
+          <Link
+            href="/admin/trips/new"
+            className="flex items-center gap-2 px-4 py-2 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nový výlet
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden">

@@ -12,7 +12,9 @@ Next.js 16 has breaking changes from earlier versions. Read `node_modules/next/d
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # migrate + seed + import sample data + next build
 npm run db:seed      # Create admin user (admin/admin) if missing
-npm test             # Run Vitest test suite
+npm test             # Run Vitest test suite (once)
+npm run test:watch   # Run Vitest in watch mode
+npx vitest run src/app/api/upload/__tests__/route.test.ts  # Run a single test file
 npx prisma migrate dev --name <name>   # Create a new migration
 npx prisma studio                      # Browse the database
 ```
@@ -45,6 +47,9 @@ The SQLite file is `dev.db` in the **project root**. `scripts/migrate.ts` is a c
 - `Trip.participants` — `"[]"` JSON array of name strings
 - `Trip.tips` — `{"logistika":[],"pozor":[]}` or `null`
 - `Trip.coverPhotoFocus` — `{"x":0.5,"y":0.7}` focal point for cover image cropping, or `null`
+- `Stop.tags` — `[{"emoji":"🛵","label":"46 km na skútru"}]` array of `{ emoji, label }` objects, or `null`
+
+**Stop description markdown** is a custom subset rendered identically in `StopForm.tsx` (admin preview) and `TripDays.tsx` (public): `**bold**`, `*italic*`, `==highlight==` (amber mark), `> blockquote` (blue left-border). Double newline = paragraph break.
 
 ### Auth (NextAuth v5 beta)
 
