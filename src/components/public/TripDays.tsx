@@ -131,6 +131,20 @@ export default function TripDays({ stops }: Props) {
   const days = groupByDay(stops)
   const [openDay, setOpenDay] = useState<number | null>(0)
 
+  function handleToggle(e: React.MouseEvent<HTMLButtonElement>, i: number) {
+    const btn = e.currentTarget
+    const topBefore = btn.getBoundingClientRect().top
+    setOpenDay(openDay === i ? null : i)
+    // After React re-renders (double rAF to wait for paint), compensate for the
+    // layout shift caused by the previously-open day collapsing so the clicked
+    // header stays at the same viewport position.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollBy(0, btn.getBoundingClientRect().top - topBefore)
+      })
+    })
+  }
+
   return (
     <section className="py-16 bg-[#fafafa]">
       <div className="max-w-3xl mx-auto px-6">
@@ -153,7 +167,7 @@ export default function TripDays({ stops }: Props) {
               >
                 {/* ── Accordion header ───────────────────────────────── */}
                 <button
-                  onClick={() => setOpenDay(isOpen ? null : i)}
+                  onClick={(e) => handleToggle(e, i)}
                   className="w-full px-6 py-5 flex items-start gap-4 text-left hover:bg-[#fafafa] transition-colors"
                 >
                   {/* Day number circle */}
