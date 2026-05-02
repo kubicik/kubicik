@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import TripForm from "@/components/admin/TripForm"
+import TripJsonUpdateButton from "@/components/admin/TripJsonUpdateButton"
 import Link from "next/link"
 
 export default async function EditTripPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +37,7 @@ export default async function EditTripPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-3 flex-wrap">
         <Link
           href={`/admin/trips/${id}/stops`}
           className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#007aff] text-sm font-medium rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:bg-[#f0f6ff] transition-colors"
@@ -47,6 +48,7 @@ export default async function EditTripPage({ params }: { params: Promise<{ id: s
           </svg>
           Spravovat zastávky na mapě
         </Link>
+        <TripJsonUpdateButton tripId={id} />
       </div>
 
       <TripForm
