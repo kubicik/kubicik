@@ -26,6 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     coverPhoto: trip.coverPhoto,
     coverPhotoFocus: (() => { try { return JSON.parse(trip.coverPhotoFocus ?? "null") } catch { return null } })(),
     stops: trip.stops.map((stop) => ({
+      id: stop.id,
       title: stop.title,
       description: stop.description,
       date: stop.date ? stop.date.toISOString().split("T")[0] : null,
