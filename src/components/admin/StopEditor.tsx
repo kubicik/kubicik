@@ -18,20 +18,15 @@ export default function StopEditor({ tripId, initialStops }: Props) {
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null)
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null)
 
-  // Called when user clicks on the map (new stop)
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setPendingLatLng({ lat, lng })
     setSelectedStop(null)
   }, [])
 
-  // Called when user clicks an existing marker
-  const handleMarkerClick = useCallback(
-    (stop: Stop) => {
-      setSelectedStop(stop)
-      setPendingLatLng(null)
-    },
-    []
-  )
+  const handleMarkerClick = useCallback((stop: Stop) => {
+    setSelectedStop(stop)
+    setPendingLatLng(null)
+  }, [])
 
   async function handleSaveNew(data: Partial<Stop>) {
     if (!pendingLatLng) return
@@ -80,7 +75,7 @@ export default function StopEditor({ tripId, initialStops }: Props) {
     try {
       toUpload = await compressImage(file, "stops")
     } catch {
-      toUpload = file // compression failed — upload original, server validates size
+      toUpload = file
     }
     const fd = new FormData()
     fd.append("file", toUpload)
@@ -97,9 +92,7 @@ export default function StopEditor({ tripId, initialStops }: Props) {
     if (photoRes.ok) {
       const photo: Photo = await photoRes.json()
       setStops((prev) =>
-        prev.map((s) =>
-          s.id === stopId ? { ...s, photos: [...(s.photos ?? []), photo] } : s
-        )
+        prev.map((s) => s.id === stopId ? { ...s, photos: [...(s.photos ?? []), photo] } : s)
       )
       setSelectedStop((prev) =>
         prev?.id === stopId ? { ...prev, photos: [...(prev.photos ?? []), photo] } : prev
@@ -112,9 +105,7 @@ export default function StopEditor({ tripId, initialStops }: Props) {
     if (res.ok) {
       setStops((prev) =>
         prev.map((s) =>
-          s.id === stopId
-            ? { ...s, photos: (s.photos ?? []).filter((p) => p.id !== photoId) }
-            : s
+          s.id === stopId ? { ...s, photos: (s.photos ?? []).filter((p) => p.id !== photoId) } : s
         )
       )
       setSelectedStop((prev) =>
@@ -129,6 +120,12 @@ export default function StopEditor({ tripId, initialStops }: Props) {
     setSelectedStop(null)
     setPendingLatLng(null)
   }
+
+  const sortedStops = [...stops].sort((a, b) => a.order - b.order)
+  const isEditing = !!(pendingLatLng || selectedStop)
+  const stopNumber = selectedStop
+    ? sortedStops.findIndex((s) => s.id === selectedStop.id) + 1
+    : sortedStops.length + 1
 
   return (
     <div className="flex gap-6 h-[calc(100vh-160px)]">
@@ -146,61 +143,75 @@ export default function StopEditor({ tripId, initialStops }: Props) {
         </div>
       </div>
 
-      {/* Side panel */}
-      <div className="w-80 flex flex-col gap-4 overflow-y-auto">
-        {/* Stop form (new or edit) */}
-        {(pendingLatLng || selectedStop) && (
+      {/* Side panel — either stop list or stop editor, never both */}
+      <div className="w-[420px] overflow-y-auto flex flex-col gap-4">
+        {isEditing ? (
           <StopForm
             stop={selectedStop}
             isNew={!!pendingLatLng}
+            stopNumber={stopNumber}
+            latLng={pendingLatLng ?? (selectedStop ? { lat: selectedStop.lat, lng: selectedStop.lng } : undefined)}
             onSave={pendingLatLng ? handleSaveNew : (data) => handleUpdateStop(selectedStop!.id, data)}
             onDelete={selectedStop ? () => handleDeleteStop(selectedStop.id) : undefined}
             onClose={handleClose}
             onAddPhoto={selectedStop ? (f) => handleAddPhoto(selectedStop.id, f) : undefined}
             onDeletePhoto={selectedStop ? (pId) => handleDeletePhoto(selectedStop.id, pId) : undefined}
           />
-        )}
-
-        {/* Stop list */}
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#e5e5ea]">
-            <h3 className="font-semibold text-[#1d1d1f] text-sm">
-              Zastávky ({stops.length})
-            </h3>
-          </div>
-          {stops.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-[#8e8e93] text-center">
-              Klikněte na mapu pro přidání zastávky
-            </p>
-          ) : (
-            <div className="divide-y divide-[#e5e5ea]">
-              {[...stops].sort((a, b) => a.order - b.order).map((stop, i) => (
-                <button
-                  key={stop.id}
-                  onClick={() => { setSelectedStop(stop); setPendingLatLng(null) }}
-                  className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors ${
-                    selectedStop?.id === stop.id ? "bg-[#f0f6ff]" : "hover:bg-[#f9f9f9]"
-                  }`}
-                >
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#007aff] text-white text-xs font-semibold flex items-center justify-center mt-0.5">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#1d1d1f] truncate">{stop.title}</p>
-                    {stop.date && (
-                      <p className="text-xs text-[#8e8e93] mt-0.5">
-                        {new Date(stop.date).toLocaleDateString("cs-CZ")}
-                      </p>
-                    )}
-                    {(stop.photos?.length ?? 0) > 0 && (
-                      <p className="text-xs text-[#8e8e93]">{stop.photos!.length} fotek</p>
-                    )}
-                  </div>
-                </button>
-              ))}
+        ) : (
+          <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#e5e5ea]">
+              <h3 className="font-semibold text-[#1d1d1f] text-sm">
+                Zastávky
+                <span className="ml-2 text-[#8e8e93] font-normal">{stops.length}</span>
+              </h3>
             </div>
-          )}
-        </div>
+            {sortedStops.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <div className="w-10 h-10 rounded-full bg-[#f2f2f7] flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-[#c7c7cc]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-[#8e8e93]">Žádné zastávky</p>
+                <p className="text-xs text-[#c7c7cc] mt-1">Klikněte na mapu pro přidání</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#f2f2f7]">
+                {sortedStops.map((stop, i) => (
+                  <button
+                    key={stop.id}
+                    onClick={() => { setSelectedStop(stop); setPendingLatLng(null) }}
+                    className="w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-[#f9f9f9] transition-colors"
+                  >
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#007aff] text-white text-xs font-semibold flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#1d1d1f] truncate">{stop.title}</p>
+                      <p className="text-xs text-[#8e8e93] mt-0.5 flex items-center gap-2">
+                        {stop.date && <span>{new Date(stop.date).toLocaleDateString("cs-CZ")}</span>}
+                        {(stop.photos?.length ?? 0) > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {stop.photos!.length}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <svg className="w-4 h-4 text-[#c7c7cc] flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
