@@ -42,9 +42,9 @@ export default function TripMapGallery({ stops: allStops }: Props) {
           Klikni na zastávku pro zobrazení fotek z daného místa.
         </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-0 rounded-2xl overflow-hidden border border-[#e5e5ea]">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-0 rounded-2xl overflow-hidden border border-[#e5e5ea] lg:h-[560px]">
           {/* Map */}
-          <div className="h-[420px] lg:h-[560px] bg-[#f5f5f7]">
+          <div className="h-[420px] lg:h-full bg-[#f5f5f7]">
             <TripMapGalleryInner
               stops={allStops}
               selectedStopId={selectedStopId}
@@ -52,8 +52,8 @@ export default function TripMapGallery({ stops: allStops }: Props) {
             />
           </div>
 
-          {/* Gallery panel */}
-          <div className="bg-white border-t lg:border-t-0 lg:border-l border-[#e5e5ea] flex flex-col">
+          {/* Gallery panel — fixed height so photos scroll instead of expanding the block */}
+          <div className="h-[400px] lg:h-full bg-white border-t lg:border-t-0 lg:border-l border-[#e5e5ea] flex flex-col">
             {selectedStop ? (
               <>
                 {/* Stop header */}
