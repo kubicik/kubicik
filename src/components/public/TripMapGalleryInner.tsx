@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 import { MapContainer, TileLayer, Marker, Polyline, useMap, Popup } from "react-leaflet"
-import type { Icon, Map as LeafletMap } from "leaflet"
 import type { Stop } from "@/types"
 
 // Fit all stops into view on first load
@@ -16,8 +15,7 @@ function BoundsFitter({ positions }: { positions: [number, number][] }) {
     }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const L = require("leaflet") as typeof import("leaflet")
-    const bounds = L.latLngBounds(positions)
-    map.fitBounds(bounds, { padding: [40, 40], animate: false })
+    map.fitBounds(L.latLngBounds(positions), { padding: [40, 40], animate: false })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
@@ -31,6 +29,30 @@ function MapPanner({ stop }: { stop: Stop | null }) {
   return null
 }
 
+function makeNumberedIcon(
+  L: typeof import("leaflet"),
+  num: number,
+  isSelected: boolean,
+) {
+  const size = isSelected ? 34 : 28
+  const half = size / 2
+  const bg = isSelected ? "#007aff" : "#ffffff"
+  const fg = isSelected ? "#ffffff" : "#007aff"
+  const border = isSelected ? "2.5px solid #ffffff" : "2px solid #007aff"
+  const shadow = isSelected
+    ? "0 0 0 2px #007aff, 0 3px 10px rgba(0,122,255,0.4)"
+    : "0 1px 5px rgba(0,0,0,0.22)"
+  const fontSize = isSelected ? 13 : 11
+
+  return new L.DivIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};border:${border};box-shadow:${shadow};display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:${fontSize}px;font-weight:700;color:${fg}">${num}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [half, half],
+    popupAnchor: [0, -(half + 4)],
+  })
+}
+
 interface Props {
   stops: Stop[]
   selectedStopId: string | null
@@ -38,34 +60,19 @@ interface Props {
 }
 
 export default function TripMapGalleryInner({ stops, selectedStopId, onStopSelect }: Props) {
-  const defaultIconRef = useRef<Icon | null>(null)
-  const selectedIconRef = useRef<Icon | null>(null)
+  const leafletRef = useRef<typeof import("leaflet") | null>(null)
   const [iconsReady, setIconsReady] = useState(false)
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const L = require("leaflet") as typeof import("leaflet")
     delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
-
-    defaultIconRef.current = new L.Icon({
+    L.Icon.Default.mergeOptions({
       iconUrl: "/leaflet/marker-icon.png",
       iconRetinaUrl: "/leaflet/marker-icon-2x.png",
       shadowUrl: "/leaflet/marker-shadow.png",
-      iconSize: [20, 32],
-      iconAnchor: [10, 32],
-      popupAnchor: [0, -32],
-      shadowSize: [32, 32],
     })
-
-    selectedIconRef.current = new L.Icon({
-      iconUrl: "/leaflet/marker-icon-2x.png",
-      shadowUrl: "/leaflet/marker-shadow.png",
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [0, -41],
-      shadowSize: [41, 41],
-    })
-
+    leafletRef.current = L
     setIconsReady(true)
   }, [])
 
@@ -90,19 +97,22 @@ export default function TripMapGalleryInner({ stops, selectedStopId, onStopSelec
         <Polyline positions={routePositions} color="#1d1d1f" weight={1.5} opacity={0.35} />
       )}
 
-      {iconsReady && sorted.map((stop, idx) => (
-        <Marker
-          key={stop.id}
-          position={[stop.lat, stop.lng]}
-          icon={stop.id === selectedStopId ? selectedIconRef.current! : defaultIconRef.current!}
-          eventHandlers={{ click: () => onStopSelect(stop) }}
-          zIndexOffset={stop.id === selectedStopId ? 1000 : 0}
-        >
-          <Popup offset={[0, stop.id === selectedStopId ? -41 : -32]}>
-            <span className="text-xs font-medium">{idx + 1}. {stop.title}</span>
-          </Popup>
-        </Marker>
-      ))}
+      {iconsReady && leafletRef.current && sorted.map((stop, idx) => {
+        const isSelected = stop.id === selectedStopId
+        return (
+          <Marker
+            key={stop.id}
+            position={[stop.lat, stop.lng]}
+            icon={makeNumberedIcon(leafletRef.current!, idx + 1, isSelected)}
+            eventHandlers={{ click: () => onStopSelect(stop) }}
+            zIndexOffset={isSelected ? 1000 : 0}
+          >
+            <Popup offset={[0, isSelected ? -21 : -18]}>
+              <span className="text-xs font-medium">{idx + 1}. {stop.title}</span>
+            </Popup>
+          </Marker>
+        )
+      })}
 
       <BoundsFitter positions={routePositions} />
       <MapPanner stop={selectedStop} />

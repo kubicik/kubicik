@@ -78,11 +78,11 @@ export default function TripMapGallery({ stops: allStops }: Props) {
                   )}
                 </div>
 
-                {/* Photos */}
+                {/* Photos — show first 3, 4th slot shows "+N dalších" if more exist */}
                 <div className="flex-1 overflow-y-auto p-4">
                   {photos.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
-                      {photos.map((photo) => (
+                      {photos.slice(0, 3).map((photo) => (
                         <button
                           key={photo.id}
                           onClick={() => handlePhotoClick(photo)}
@@ -101,6 +101,20 @@ export default function TripMapGallery({ stops: allStops }: Props) {
                           )}
                         </button>
                       ))}
+                      {photos.length > 3 && (
+                        <div className="relative aspect-square overflow-hidden rounded-lg">
+                          <Image
+                            src={photos[3].url}
+                            alt=""
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/62 flex flex-col items-center justify-center gap-1">
+                            <span className="text-white text-3xl font-bold leading-none">+{photos.length - 3}</span>
+                            <span className="text-white/75 text-xs tracking-wide">dalších</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-32 text-[#8e8e93] text-sm">
