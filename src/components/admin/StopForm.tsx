@@ -146,7 +146,7 @@ export default function StopForm({
   const [date, setDate] = useState("")
   const [tags, setTags] = useState<Tag[]>([])
   const [saving, setSaving] = useState(false)
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
   const [descTab, setDescTab] = useState<"edit" | "preview">("edit")
 
   useEffect(() => {
@@ -181,11 +181,14 @@ export default function StopForm({
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !onAddPhoto) return
-    setUploadingPhoto(true)
-    await onAddPhoto(file)
-    setUploadingPhoto(false)
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0 || !onAddPhoto) return
+    setUploadProgress({ done: 0, total: files.length })
+    for (let i = 0; i < files.length; i++) {
+      await onAddPhoto(files[i])
+      setUploadProgress({ done: i + 1, total: files.length })
+    }
+    setUploadProgress(null)
     e.target.value = ""
   }
 
@@ -324,20 +327,32 @@ export default function StopForm({
               </div>
             )}
             <label className={`flex items-center justify-center gap-2 h-11 border-2 border-dashed rounded-xl cursor-pointer text-sm transition-colors ${
-              uploadingPhoto
+              uploadProgress
                 ? "border-[#007aff] bg-[#f0f6ff] text-[#007aff]"
                 : "border-[#c7c7cc] text-[#8e8e93] hover:border-[#007aff] hover:text-[#007aff]"
             }`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-              </svg>
-              {uploadingPhoto ? "Nahrávám…" : "Přidat fotografii"}
+              {uploadProgress ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Nahrávám {uploadProgress.done + 1}/{uploadProgress.total}…
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Přidat fotografie
+                </>
+              )}
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 onChange={handlePhotoUpload}
-                disabled={uploadingPhoto}
+                disabled={!!uploadProgress}
               />
             </label>
           </div>
