@@ -120,6 +120,21 @@ Upload routing in `src/app/api/upload/route.ts`:
 
 Blob store must be created with **Public** access in Vercel dashboard — Private access returns 500.
 
+### Trip JSON Import/Export
+
+Three API endpoints handle bulk trip data transfer:
+- `GET /api/trips/[id]/export` — downloads `<slug>.json` with all trip fields, stops, and photos; omits `id`/`slug`/`published`
+- `POST /api/trips/import` — creates a new **draft** trip from JSON including stops and photos; auto-generates slug from title
+- `POST /api/trips/[id]/update-from-json` — updates trip metadata then **deletes all existing stops** (cascades to photos) and recreates them from the JSON payload. No undo.
+
+`TripImportButton` (trips list) has a copyable AI prompt template describing the full JSON schema. `TripJsonUpdateButton` (trip detail) has a "Načíst aktuální" button that pre-fills the textarea from the export endpoint.
+
+### Stop Editor Panel
+
+`/admin/trips/[id]/stops` renders a two-panel layout: Leaflet map (flex-1 left) and a `w-[420px]` right panel. The panel is either the **stop list** or the **stop form** — never both simultaneously. The switch is driven by `pendingLatLng || selectedStop` state in `StopEditor.tsx`.
+
+`StopForm` receives `stopNumber` and `latLng` props (for GPS display). Photo upload uses `multiple` and processes files **sequentially** (one compress+upload at a time) to avoid saturating the upload endpoint.
+
 ### Admin Navigation
 
 After a successful form save, navigate with `router.push(url)` only — **never** call `router.refresh()` immediately after. Combining both corrupts Next.js App Router's navigation state and causes "This page couldn't load" on the destination page.
