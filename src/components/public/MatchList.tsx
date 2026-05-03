@@ -49,23 +49,24 @@ function PhotoGallery({ photos }: { photos: MatchPhoto[] }) {
     createdAt: p.createdAt,
   }))
 
+  const cols = photos.length === 1 ? 1 : photos.length === 2 ? 2 : 3
+  const visible = photos.slice(0, cols)
+
   return (
     <>
-      <div className={`grid gap-1.5 mt-4 ${photos.length === 1 ? "grid-cols-1" : photos.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
-        {photos.slice(0, 5).map((photo, i) => {
-          const isLast = i === 4 && photos.length > 5
+      <div className={`grid gap-1.5 mt-4 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+        {visible.map((photo, i) => {
+          const isLast = i === cols - 1 && photos.length > cols
           return (
             <button
               key={photo.id}
               onClick={() => setLightboxIndex(i)}
-              className={`relative overflow-hidden rounded-xl bg-[#f2f2f7] cursor-zoom-in ${
-                photos.length === 1 ? "aspect-[16/9]" : "aspect-square"
-              } ${photos.length % 2 === 1 && photos.length <= 3 && i === 0 ? "col-span-2 aspect-[16/9]" : ""}`}
+              className={`relative overflow-hidden rounded-xl bg-[#f2f2f7] cursor-zoom-in ${cols === 1 ? "aspect-[16/9]" : "aspect-square"}`}
             >
               <Image src={photo.url} alt={photo.caption ?? ""} fill className="object-cover" />
               {isLast && (
                 <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
-                  <span className="text-white text-2xl font-bold">+{photos.length - 4}</span>
+                  <span className="text-white text-2xl font-bold">+{photos.length - cols + 1}</span>
                 </div>
               )}
             </button>
