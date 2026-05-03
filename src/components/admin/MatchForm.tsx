@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import type { Match } from "@/types"
+import Image from "next/image"
+import type { Match, MatchPhoto } from "@/types"
+import { compressImage } from "@/lib/compressImage"
 
 const COMPETITIONS = [
   "Premier League",
@@ -14,8 +16,10 @@ const COMPETITIONS = [
   "Přátelský zápas",
 ]
 
+const HOME_VENUE = "Tottenham Hotspur Stadium"
+
 interface Props {
-  match?: Match
+  match?: Match & { photos?: MatchPhoto[] }
 }
 
 export default function MatchForm({ match }: Props) {
@@ -32,7 +36,7 @@ export default function MatchForm({ match }: Props) {
   const [homeAway, setHomeAway] = useState<"home" | "away">(
     (match?.homeAway as "home" | "away") ?? "home"
   )
-  const [venue, setVenue] = useState(match?.venue ?? "")
+  const [venue, setVenue] = useState(match?.venue ?? (match?.homeAway === "home" ? HOME_VENUE : ""))
   const [scoreSpurs, setScoreSpurs] = useState(match?.scoreSpurs?.toString() ?? "")
   const [scoreOpponent, setScoreOpponent] = useState(match?.scoreOpponent?.toString() ?? "")
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
@@ -41,6 +45,17 @@ export default function MatchForm({ match }: Props) {
   const [notes, setNotes] = useState(match?.notes ?? "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+
+  // Photos
+  const [photos, setPhotos] = useState<MatchPhoto[]>(match?.photos ?? [])
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function handleHomeAwayChange(v: "home" | "away") {
+    setHomeAway(v)
+    if (v === "home" && !venue) setVenue(HOME_VENUE)
+    if (v === "away" && venue === HOME_VENUE) setVenue("")
+  }
 
   function addAttendee() {
     const name = attendeeInput.trim()
@@ -51,6 +66,39 @@ export default function MatchForm({ match }: Props) {
 
   function removeAttendee(name: string) {
     setAttendees(attendees.filter((a) => a !== name))
+  }
+
+  async function handlePhotoFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ""
+    if (!files.length || !match?.id) return
+    setUploadProgress({ done: 0, total: files.length })
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const compressed = await compressImage(files[i], "matches")
+        const fd = new FormData()
+        fd.append("file", compressed)
+        fd.append("type", "matches")
+        const upRes = await fetch("/api/upload", { method: "POST", body: fd })
+        const { url } = await upRes.json()
+        const saveRes = await fetch(`/api/matches/${match.id}/photos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        })
+        const photo = await saveRes.json()
+        setPhotos((prev) => [...prev, photo])
+      } catch (err) {
+        console.error(err)
+      }
+      setUploadProgress({ done: i + 1, total: files.length })
+    }
+    setUploadProgress(null)
+  }
+
+  async function deletePhoto(photoId: string) {
+    await fetch(`/api/matches/${match!.id}/photos/${photoId}`, { method: "DELETE" })
+    setPhotos((prev) => prev.filter((p) => p.id !== photoId))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -139,7 +187,7 @@ export default function MatchForm({ match }: Props) {
               <button
                 key={v}
                 type="button"
-                onClick={() => setHomeAway(v)}
+                onClick={() => handleHomeAwayChange(v)}
                 className={`flex-1 py-2 text-sm rounded-xl border transition-colors ${
                   homeAway === v
                     ? "bg-[#132257] text-white border-[#132257]"
@@ -223,6 +271,71 @@ export default function MatchForm({ match }: Props) {
           </div>
         )}
       </div>
+
+      {/* Fotografie */}
+      {isEdit && (
+        <div className="bg-white rounded-2xl border border-[#e5e5ea] p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-[#1d1d1f]">Fotografie ze zápasu</h2>
+
+          {photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((photo) => (
+                <div key={photo.id} className="relative group aspect-square rounded-xl overflow-hidden bg-[#f2f2f7]">
+                  <Image src={photo.url} alt="" fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => deletePhoto(photo.id)}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs hover:bg-[#ff3b30]"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={!!uploadProgress}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-[#f2f2f7] text-[#3a3a3c] rounded-xl hover:bg-[#e5e5ea] disabled:opacity-50 transition-colors"
+            >
+              {uploadProgress ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Nahrávám {uploadProgress.done}/{uploadProgress.total}…
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Přidat fotky
+                </>
+              )}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handlePhotoFiles}
+            />
+          </div>
+          <p className="text-xs text-[#8e8e93]">Fotky se nahrávají automaticky po výběru. Uložit zápas není třeba pro správu fotek.</p>
+        </div>
+      )}
+
+      {!isEdit && (
+        <div className="bg-[#f9f9f9] rounded-2xl border border-[#e5e5ea] px-5 py-4">
+          <p className="text-sm text-[#8e8e93]">Fotky lze přidat po prvním uložení zápasu.</p>
+        </div>
+      )}
 
       {/* Video */}
       <div className="bg-white rounded-2xl border border-[#e5e5ea] p-6 space-y-3">

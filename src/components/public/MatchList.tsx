@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import type { Match } from "@/types"
+import Image from "next/image"
+import type { Match, MatchPhoto } from "@/types"
+import Lightbox from "./Lightbox"
 
 function getEmbedUrl(url: string): string | null {
   try {
     const u = new URL(url)
-    // youtube.com/watch?v=ID
     if (u.hostname.includes("youtube.com") && u.searchParams.get("v")) {
       return `https://www.youtube.com/embed/${u.searchParams.get("v")}`
     }
-    // youtu.be/ID
     if (u.hostname === "youtu.be") {
       return `https://www.youtube.com/embed${u.pathname}`
     }
@@ -36,17 +36,65 @@ const COMPETITION_COLORS: Record<string, string> = {
   "Přátelský zápas":        "bg-[#8e8e93] text-white",
 }
 
+function PhotoGallery({ photos }: { photos: MatchPhoto[] }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  if (photos.length === 0) return null
+
+  const lightboxPhotos = photos.map((p) => ({
+    id: p.id,
+    stopId: p.matchId,
+    url: p.url,
+    caption: p.caption,
+    order: p.order,
+    createdAt: p.createdAt,
+  }))
+
+  return (
+    <>
+      <div className={`grid gap-1.5 mt-4 ${photos.length === 1 ? "grid-cols-1" : photos.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+        {photos.slice(0, 5).map((photo, i) => {
+          const isLast = i === 4 && photos.length > 5
+          return (
+            <button
+              key={photo.id}
+              onClick={() => setLightboxIndex(i)}
+              className={`relative overflow-hidden rounded-xl bg-[#f2f2f7] cursor-zoom-in ${
+                photos.length === 1 ? "aspect-[16/9]" : "aspect-square"
+              } ${photos.length % 2 === 1 && photos.length <= 3 && i === 0 ? "col-span-2 aspect-[16/9]" : ""}`}
+            >
+              <Image src={photo.url} alt={photo.caption ?? ""} fill className="object-cover" />
+              {isLast && (
+                <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
+                  <span className="text-white text-2xl font-bold">+{photos.length - 4}</span>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      {lightboxIndex !== null && (
+        <Lightbox
+          photos={lightboxPhotos}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onChange={setLightboxIndex}
+        />
+      )}
+    </>
+  )
+}
+
 interface MatchCardProps {
-  match: Match
+  match: Match & { photos?: MatchPhoto[] }
   index: number
 }
 
 function MatchCard({ match, index }: MatchCardProps) {
-  const [videoOpen, setVideoOpen] = useState(false)
   const result = resultInfo(match.scoreSpurs, match.scoreOpponent)
   const attendees: string[] = (() => { try { return JSON.parse(match.attendees) } catch { return [] } })()
   const compClass = COMPETITION_COLORS[match.competition] ?? "bg-[#f2f2f7] text-[#3a3a3c]"
   const embedUrl = match.videoUrl ? getEmbedUrl(match.videoUrl) : null
+  const photos: MatchPhoto[] = match.photos ?? []
 
   const dateStr = new Date(match.date).toLocaleDateString("cs-CZ", {
     weekday: "short", day: "numeric", month: "long", year: "numeric",
@@ -58,7 +106,7 @@ function MatchCard({ match, index }: MatchCardProps) {
   return (
     <div className="bg-white rounded-2xl border border-[#e5e5ea] overflow-hidden">
       <div className="px-5 py-5">
-        {/* Top row: number + competition + date */}
+        {/* Top row */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-[#132257] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
@@ -84,7 +132,6 @@ function MatchCard({ match, index }: MatchCardProps) {
               {match.homeAway === "home" ? "Tottenham Hotspur" : match.opponent}
             </p>
           </div>
-
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-2">
               <span className="text-3xl font-bold text-[#1d1d1f] tabular-nums">
@@ -99,7 +146,6 @@ function MatchCard({ match, index }: MatchCardProps) {
               {result.text}
             </span>
           </div>
-
           <div className="flex-1 text-right">
             <p className="text-xs font-semibold text-[#8e8e93] uppercase tracking-wide mb-1">
               {match.homeAway === "away" ? "Domácí" : "Hosté"}
@@ -136,22 +182,12 @@ function MatchCard({ match, index }: MatchCardProps) {
           <p className="text-sm text-[#6e6e73] leading-relaxed mt-2">{match.notes}</p>
         )}
 
-        {/* Video toggle */}
-        {embedUrl && (
-          <button
-            onClick={() => setVideoOpen(!videoOpen)}
-            className="mt-3 flex items-center gap-2 text-xs text-[#007aff] hover:text-[#0066d6] transition-colors"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            {videoOpen ? "Skrýt video" : "Zobrazit video"}
-          </button>
-        )}
+        {/* Photos */}
+        <PhotoGallery photos={photos} />
       </div>
 
-      {/* Video embed */}
-      {embedUrl && videoOpen && (
+      {/* Video embed — always visible when present */}
+      {embedUrl && (
         <div className="aspect-video w-full border-t border-[#f2f2f7]">
           <iframe
             src={embedUrl}
@@ -166,7 +202,7 @@ function MatchCard({ match, index }: MatchCardProps) {
 }
 
 interface Props {
-  matches: Match[]
+  matches: (Match & { photos?: MatchPhoto[] })[]
 }
 
 export default function MatchList({ matches }: Props) {
@@ -178,7 +214,6 @@ export default function MatchList({ matches }: Props) {
 
   return (
     <div>
-      {/* Stats */}
       {matches.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-10">
           {[
@@ -196,7 +231,6 @@ export default function MatchList({ matches }: Props) {
         </div>
       )}
 
-      {/* Match cards — sorted desc (newest first), display number = asc order */}
       <div className="space-y-4">
         {matches.map((match, i) => (
           <MatchCard key={match.id} match={match} index={matches.length - i} />

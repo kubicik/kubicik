@@ -4,13 +4,17 @@ import MatchList from "@/components/public/MatchList"
 export const revalidate = 60
 
 export default async function SpursPage() {
-  const matches = await prisma.match.findMany({ orderBy: { date: "desc" } })
+  const matches = await prisma.match.findMany({
+    orderBy: { date: "desc" },
+    include: { photos: { orderBy: { order: "asc" } } },
+  })
 
   const serialized = matches.map((m) => ({
     ...m,
     date: m.date.toISOString(),
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
+    photos: m.photos.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() })),
   }))
 
   return (

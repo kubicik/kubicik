@@ -4,7 +4,10 @@ import MatchForm from "@/components/admin/MatchForm"
 
 export default async function EditMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const match = await prisma.match.findUnique({ where: { id } })
+  const match = await prisma.match.findUnique({
+    where: { id },
+    include: { photos: { orderBy: { order: "asc" } } },
+  })
   if (!match) notFound()
 
   const serialized = {
@@ -12,6 +15,10 @@ export default async function EditMatchPage({ params }: { params: Promise<{ id: 
     date: match.date.toISOString(),
     createdAt: match.createdAt.toISOString(),
     updatedAt: match.updatedAt.toISOString(),
+    photos: match.photos.map((p) => ({
+      ...p,
+      createdAt: p.createdAt.toISOString(),
+    })),
   }
 
   return (

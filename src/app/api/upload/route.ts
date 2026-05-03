@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Upload se nepodařil — soubor je příliš velký" }, { status: 413 })
     }
 
-    const uploadType = ["covers", "stops"].includes(type) ? type : "stops"
+    const uploadType = ["covers", "stops", "matches"].includes(type) ? type : "stops"
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const filename = `${Date.now()}-${safeName}`
 

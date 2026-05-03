@@ -22,6 +22,15 @@ export interface Stop {
   photos?: Photo[]
 }
 
+export interface MatchPhoto {
+  id: string
+  matchId: string
+  url: string
+  caption: string | null
+  order: number
+  createdAt: string
+}
+
 export interface Match {
   id: string
   date: string
@@ -36,6 +45,7 @@ export interface Match {
   notes: string | null
   createdAt: string
   updatedAt: string
+  photos?: MatchPhoto[]
 }
 
 export interface Trip {
