@@ -206,6 +206,13 @@ interface Props {
   matches: (Match & { photos?: MatchPhoto[] })[]
 }
 
+function season(dateStr: string): string {
+  const d = new Date(dateStr)
+  const y = d.getFullYear()
+  const m = d.getMonth() + 1 // 1–12
+  return m >= 7 ? `${y}/${y + 1}` : `${y - 1}/${y}`
+}
+
 export default function MatchList({ matches }: Props) {
   const wins = matches.filter((m) => m.scoreSpurs > m.scoreOpponent).length
   const draws = matches.filter((m) => m.scoreSpurs === m.scoreOpponent).length
@@ -213,23 +220,84 @@ export default function MatchList({ matches }: Props) {
   const goalsFor = matches.reduce((s, m) => s + m.scoreSpurs, 0)
   const goalsAgainst = matches.reduce((s, m) => s + m.scoreOpponent, 0)
 
+  // By competition
+  const byCompetition = matches.reduce<Record<string, number>>((acc, m) => {
+    acc[m.competition] = (acc[m.competition] ?? 0) + 1
+    return acc
+  }, {})
+  const competitionEntries = Object.entries(byCompetition).sort((a, b) => b[1] - a[1])
+
+  // By season
+  const bySeason = matches.reduce<Record<string, number>>((acc, m) => {
+    const s = season(m.date)
+    acc[s] = (acc[s] ?? 0) + 1
+    return acc
+  }, {})
+  const seasonEntries = Object.entries(bySeason).sort((a, b) => b[0].localeCompare(a[0]))
+
   return (
     <div>
       {matches.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-10">
-          {[
-            { label: "Celkem", value: matches.length, cls: "text-[#1d1d1f]" },
-            { label: "Výhry", value: wins, cls: "text-green-600" },
-            { label: "Remízy", value: draws, cls: "text-[#8e8e93]" },
-            { label: "Prohry", value: losses, cls: "text-[#ff3b30]" },
-            { label: "Skóre", value: `${goalsFor}:${goalsAgainst}`, cls: "text-[#1d1d1f]" },
-          ].map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl border border-[#e5e5ea] px-4 py-4 text-center">
-              <p className={`text-2xl font-bold ${s.cls}`}>{s.value}</p>
-              <p className="text-xs text-[#8e8e93] mt-0.5">{s.label}</p>
+        <>
+          {/* Summary tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+            {[
+              { label: "Celkem", value: matches.length, cls: "text-[#1d1d1f]" },
+              { label: "Výhry", value: wins, cls: "text-green-600" },
+              { label: "Remízy", value: draws, cls: "text-[#8e8e93]" },
+              { label: "Prohry", value: losses, cls: "text-[#ff3b30]" },
+              { label: "Skóre", value: `${goalsFor}:${goalsAgainst}`, cls: "text-[#1d1d1f]" },
+            ].map((s) => (
+              <div key={s.label} className="bg-white rounded-2xl border border-[#e5e5ea] px-4 py-4 text-center">
+                <p className={`text-2xl font-bold ${s.cls}`}>{s.value}</p>
+                <p className="text-xs text-[#8e8e93] mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* By competition + by season */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+            <div className="bg-white rounded-2xl border border-[#e5e5ea] px-5 py-4">
+              <p className="text-xs font-semibold text-[#8e8e93] uppercase tracking-widest mb-3">Podle soutěže</p>
+              <div className="space-y-2">
+                {competitionEntries.map(([comp, count]) => (
+                  <div key={comp} className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-[#1d1d1f] truncate">{comp}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="h-1.5 rounded-full bg-[#132257]/20 w-16 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#132257]"
+                          style={{ width: `${(count / matches.length) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-[#1d1d1f] w-5 text-right">{count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+
+            <div className="bg-white rounded-2xl border border-[#e5e5ea] px-5 py-4">
+              <p className="text-xs font-semibold text-[#8e8e93] uppercase tracking-widest mb-3">Podle ročníku</p>
+              <div className="space-y-2">
+                {seasonEntries.map(([s, count]) => (
+                  <div key={s} className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-[#1d1d1f]">{s}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="h-1.5 rounded-full bg-[#132257]/20 w-16 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#132257]"
+                          style={{ width: `${(count / matches.length) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-[#1d1d1f] w-5 text-right">{count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       <div className="space-y-4">
