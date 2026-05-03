@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type { Match } from "@/types"
+import AttendeeInput from "./AttendeeInput"
 
 const COMPETITIONS = [
   "Premier League", "Champions League", "Europa League",
@@ -21,9 +22,10 @@ function resultBadge(scoreSpurs: number, scoreOpponent: number) {
 interface Props {
   match: Match
   index: number
+  suggestions?: string[]
 }
 
-export default function MatchInlineRow({ match, index }: Props) {
+export default function MatchInlineRow({ match, index, suggestions = [] }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -39,16 +41,8 @@ export default function MatchInlineRow({ match, index }: Props) {
   const [scoreSpurs, setScoreSpurs] = useState(match.scoreSpurs.toString())
   const [scoreOpponent, setScoreOpponent] = useState(match.scoreOpponent.toString())
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
-  const [attendeeInput, setAttendeeInput] = useState("")
 
   const result = resultBadge(match.scoreSpurs, match.scoreOpponent)
-
-  function addAttendee() {
-    const name = attendeeInput.trim()
-    if (!name || attendees.includes(name)) return
-    setAttendees([...attendees, name])
-    setAttendeeInput("")
-  }
 
   function handleHomeAwayChange(v: "home" | "away") {
     setHomeAway(v)
@@ -63,7 +57,6 @@ export default function MatchInlineRow({ match, index }: Props) {
     setScoreSpurs(match.scoreSpurs.toString())
     setScoreOpponent(match.scoreOpponent.toString())
     setAttendees(initialAttendees)
-    setAttendeeInput("")
   }
 
   async function handleSave() {
@@ -173,26 +166,12 @@ export default function MatchInlineRow({ match, index }: Props) {
 
         <div className="mb-4">
           <label className="text-xs text-[#6e6e73] mb-1 block">S kým</label>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text" value={attendeeInput}
-              onChange={(e) => setAttendeeInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAttendee() } }}
-              placeholder="Jméno..."
-              className="flex-1 px-3 py-1.5 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff]"
-            />
-            <button type="button" onClick={addAttendee} className="px-3 py-1.5 text-xs bg-[#f2f2f7] rounded-xl hover:bg-[#e5e5ea]">Přidat</button>
-          </div>
-          {attendees.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {attendees.map((a) => (
-                <span key={a} className="flex items-center gap-1 px-2.5 py-0.5 bg-[#132257]/10 text-[#132257] text-xs rounded-full">
-                  {a}
-                  <button type="button" onClick={() => setAttendees(attendees.filter((x) => x !== a))} className="hover:text-[#ff3b30]">×</button>
-                </span>
-              ))}
-            </div>
-          )}
+          <AttendeeInput
+            attendees={attendees}
+            suggestions={suggestions}
+            onAdd={(name) => { if (!attendees.includes(name)) setAttendees([...attendees, name]) }}
+            onRemove={(name) => setAttendees(attendees.filter((x) => x !== name))}
+          />
         </div>
 
         <div className="flex items-center gap-3">

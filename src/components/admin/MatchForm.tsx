@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Match, MatchPhoto } from "@/types"
 import { compressImage } from "@/lib/compressImage"
+import AttendeeInput from "./AttendeeInput"
 
 const COMPETITIONS = [
   "Premier League",
@@ -20,9 +21,10 @@ const HOME_VENUE = "Tottenham Hotspur Stadium"
 
 interface Props {
   match?: Match & { photos?: MatchPhoto[] }
+  suggestions?: string[]
 }
 
-export default function MatchForm({ match }: Props) {
+export default function MatchForm({ match, suggestions = [] }: Props) {
   const router = useRouter()
   const isEdit = !!match
 
@@ -40,7 +42,6 @@ export default function MatchForm({ match }: Props) {
   const [scoreSpurs, setScoreSpurs] = useState(match?.scoreSpurs?.toString() ?? "")
   const [scoreOpponent, setScoreOpponent] = useState(match?.scoreOpponent?.toString() ?? "")
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
-  const [attendeeInput, setAttendeeInput] = useState("")
   const [videoUrl, setVideoUrl] = useState(match?.videoUrl ?? "")
   const [notes, setNotes] = useState(match?.notes ?? "")
   const [saving, setSaving] = useState(false)
@@ -57,11 +58,8 @@ export default function MatchForm({ match }: Props) {
     if (v === "away" && venue === HOME_VENUE) setVenue("")
   }
 
-  function addAttendee() {
-    const name = attendeeInput.trim()
-    if (!name || attendees.includes(name)) return
-    setAttendees([...attendees, name])
-    setAttendeeInput("")
+  function addAttendee(name: string) {
+    if (!attendees.includes(name)) setAttendees([...attendees, name])
   }
 
   function removeAttendee(name: string) {
@@ -243,33 +241,12 @@ export default function MatchForm({ match }: Props) {
       {/* Účastníci */}
       <div className="bg-white rounded-2xl border border-[#e5e5ea] p-6 space-y-3">
         <h2 className="text-sm font-semibold text-[#1d1d1f]">S kým jsem byl</h2>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={attendeeInput}
-            onChange={(e) => setAttendeeInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAttendee() } }}
-            placeholder="Jméno..."
-            className="flex-1 px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff]"
-          />
-          <button
-            type="button"
-            onClick={addAttendee}
-            className="px-4 py-2 text-sm bg-[#f2f2f7] text-[#3a3a3c] rounded-xl hover:bg-[#e5e5ea] transition-colors"
-          >
-            Přidat
-          </button>
-        </div>
-        {attendees.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {attendees.map((a) => (
-              <span key={a} className="flex items-center gap-1.5 px-3 py-1 bg-[#132257]/10 text-[#132257] text-xs rounded-full">
-                {a}
-                <button type="button" onClick={() => removeAttendee(a)} className="hover:text-[#ff3b30]">×</button>
-              </span>
-            ))}
-          </div>
-        )}
+        <AttendeeInput
+          attendees={attendees}
+          suggestions={suggestions}
+          onAdd={addAttendee}
+          onRemove={removeAttendee}
+        />
       </div>
 
       {/* Fotografie */}

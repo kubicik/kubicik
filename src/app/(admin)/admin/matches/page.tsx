@@ -3,11 +3,30 @@ import Link from "next/link"
 import MatchImportExportButton from "@/components/admin/MatchImportExportButton"
 import MatchInlineRow from "@/components/admin/MatchInlineRow"
 
+async function fetchSuggestions(): Promise<string[]> {
+  const [matches, trips] = await Promise.all([
+    prisma.match.findMany({ select: { attendees: true } }),
+    prisma.trip.findMany({ select: { participants: true } }),
+  ])
+  const names = new Set<string>()
+  for (const m of matches) {
+    try { for (const n of JSON.parse(m.attendees) as string[]) if (n.trim()) names.add(n.trim()) } catch { /* skip */ }
+  }
+  for (const t of trips) {
+    try { for (const n of JSON.parse(t.participants) as string[]) if (n.trim()) names.add(n.trim()) } catch { /* skip */ }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, "cs"))
+}
+
 export default async function AdminMatchesPage() {
-  const matches = await prisma.match.findMany({
-    orderBy: { date: "desc" },
-    include: { photos: { orderBy: { order: "asc" } } },
-  })
+  const [matchRows, suggestions] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: { date: "desc" },
+      include: { photos: { orderBy: { order: "asc" } } },
+    }),
+    fetchSuggestions(),
+  ])
+  const matches = matchRows
 
   const serialized = matches.map((m, idx) => ({
     id: m.id,
@@ -66,7 +85,7 @@ export default async function AdminMatchesPage() {
         ) : (
           <div>
             {serialized.map((m) => (
-              <MatchInlineRow key={m.id} match={m} index={m._index} />
+              <MatchInlineRow key={m.id} match={m} index={m._index} suggestions={suggestions} />
             ))}
           </div>
         )}
