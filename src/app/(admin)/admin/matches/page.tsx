@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import MatchListActions from "@/components/admin/MatchListActions"
+import MatchImportExportButton from "@/components/admin/MatchImportExportButton"
 
 function resultLabel(scoreSpurs: number, scoreOpponent: number) {
   if (scoreSpurs > scoreOpponent) return { label: "V", className: "bg-[#e8f8ed] text-[#1a7f37]" }
@@ -18,6 +19,7 @@ export default async function AdminMatchesPage() {
           <h1 className="text-2xl font-semibold text-[#1d1d1f]">Zápasy Spurs</h1>
           <p className="text-[#8e8e93] text-sm mt-0.5">{matches.length} zápasů celkem</p>
         </div>
+        <MatchImportExportButton />
         <Link
           href="/admin/matches/new"
           className="flex items-center gap-2 px-4 py-2 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] transition-colors"
