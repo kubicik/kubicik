@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Image from "next/image"
 import type { Stop, Photo } from "@/types"
+import Lightbox from "./Lightbox"
 
 // ── Inline renderer: **bold**, *italic*, ==highlight== ───────────────────────
 function renderInline(text: string): React.ReactNode[] {
@@ -59,14 +60,15 @@ function renderDescription(text: string): React.ReactNode {
 }
 
 // ── Photo grid — 2 columns, caption overlay ──────────────────────────────────
-function PhotoGrid({ photos }: { photos: Photo[] }) {
+function PhotoGrid({ photos, onPhotoClick }: { photos: Photo[]; onPhotoClick: (photo: Photo) => void }) {
   if (photos.length === 0) return null
   return (
     <div className={`grid gap-2 mt-4 ${photos.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
       {photos.map((photo, i) => (
-        <div
+        <button
           key={photo.id}
-          className={`relative overflow-hidden rounded-xl bg-[#f2f2f7] ${
+          onClick={() => onPhotoClick(photo)}
+          className={`relative overflow-hidden rounded-xl bg-[#f2f2f7] cursor-zoom-in ${
             photos.length === 1 ? "aspect-[16/9]" : "aspect-square"
           } ${photos.length % 2 === 1 && i === 0 ? "col-span-2 aspect-[16/9]" : ""}`}
         >
@@ -82,7 +84,7 @@ function PhotoGrid({ photos }: { photos: Photo[] }) {
               {photo.caption}
             </p>
           )}
-        </div>
+        </button>
       ))}
     </div>
   )
@@ -130,6 +132,17 @@ interface Props { stops: Stop[] }
 export default function TripDays({ stops }: Props) {
   const days = groupByDay(stops)
   const [openDay, setOpenDay] = useState<number | null>(0)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const allPhotos = useMemo(
+    () => stops.flatMap((s) => s.photos ?? []),
+    [stops]
+  )
+
+  function handlePhotoClick(photo: Photo) {
+    const idx = allPhotos.findIndex((p) => p.id === photo.id)
+    if (idx !== -1) setLightboxIndex(idx)
+  }
 
   function handleToggle(e: React.MouseEvent<HTMLButtonElement>, i: number) {
     const btn = e.currentTarget
@@ -146,6 +159,7 @@ export default function TripDays({ stops }: Props) {
   }
 
   return (
+    <>
     <section className="py-16 bg-[#fafafa]">
       <div className="max-w-3xl mx-auto px-6">
         <h2 className="text-2xl font-semibold text-[#1d1d1f] mb-2">Den po dni</h2>
@@ -156,7 +170,7 @@ export default function TripDays({ stops }: Props) {
         <div className="space-y-3">
           {days.map((day, i) => {
             const isOpen = openDay === i
-            const allPhotos = day.stops.flatMap((s) => s.photos ?? []).slice(0, 4)
+            const dayPhotos = day.stops.flatMap((s) => s.photos ?? []).slice(0, 4)
             const route = day.stops.map((s) => s.title).join(" → ")
             const dayTags: Tag[] = day.stops.flatMap((s) => parseTags(s.tags))
 
@@ -197,9 +211,9 @@ export default function TripDays({ stops }: Props) {
                     </div>
 
                     {/* Thumbnail strip when closed */}
-                    {!isOpen && allPhotos.length > 0 && (
+                    {!isOpen && dayPhotos.length > 0 && (
                       <div className="flex gap-1.5 mt-3">
-                        {allPhotos.slice(0, 4).map((p) => (
+                        {dayPhotos.slice(0, 4).map((p) => (
                           <div key={p.id} className="relative w-12 h-12 rounded-lg overflow-hidden bg-[#f2f2f7] flex-shrink-0">
                             <Image src={p.url} alt={p.caption ?? ""} fill className="object-cover" />
                           </div>
@@ -224,7 +238,7 @@ export default function TripDays({ stops }: Props) {
                         </h4>
                         {stop.description && renderDescription(stop.description)}
                         {(stop.photos?.length ?? 0) > 0 && (
-                          <PhotoGrid photos={stop.photos!} />
+                          <PhotoGrid photos={stop.photos!} onPhotoClick={handlePhotoClick} />
                         )}
                       </div>
                     ))}
@@ -251,5 +265,15 @@ export default function TripDays({ stops }: Props) {
         </div>
       </div>
     </section>
+
+    {lightboxIndex !== null && (
+      <Lightbox
+        photos={allPhotos}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChange={setLightboxIndex}
+      />
+    )}
+    </>
   )
 }

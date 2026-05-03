@@ -22,6 +22,22 @@ export interface Stop {
   photos?: Photo[]
 }
 
+export interface Match {
+  id: string
+  date: string
+  competition: string
+  opponent: string
+  homeAway: string
+  venue: string | null
+  scoreSpurs: number
+  scoreOpponent: number
+  attendees: string
+  videoUrl: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Trip {
   id: string
   slug: string

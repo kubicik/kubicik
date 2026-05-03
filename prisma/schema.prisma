@@ -64,3 +64,19 @@ model Photo {
   order     Int      @default(0)
   createdAt DateTime @default(now())
 }
+
+model Match {
+  id             String   @id @default(cuid())
+  date           DateTime
+  competition    String
+  opponent       String
+  homeAway       String   @default("home")
+  venue          String?
+  scoreSpurs     Int
+  scoreOpponent  Int
+  attendees      String   @default("[]")
+  videoUrl       String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

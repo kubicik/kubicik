@@ -23,6 +23,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               Účastníci
             </Link>
             <Link
+              href="/spurs"
+              className="flex items-center gap-1.5 text-[#8e8e93] hover:text-[#132257] text-sm transition-colors"
+            >
+              <span className="w-4 h-4 rounded bg-[#132257] inline-flex items-center justify-center">
+                <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+              Spurs
+            </Link>
+            <Link
               href="/admin"
               className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
             >

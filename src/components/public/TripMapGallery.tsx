@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import type { Stop, Photo } from "@/types"
+import Lightbox from "./Lightbox"
 
 const TripMapGalleryInner = dynamic(() => import("./TripMapGalleryInner"), { ssr: false })
 
@@ -23,18 +24,19 @@ export default function TripMapGallery({ stops: allStops }: Props) {
 
   const selectedStop = allStops.find((s) => s.id === selectedStopId) ?? null
   const photos = selectedStop?.photos ?? []
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   function handleStopSelect(stop: Stop) {
     setSelectedStopId(stop.id)
   }
 
   function handlePhotoClick(photo: Photo) {
-    // Find which stop owns this photo and select it
-    const owner = allStops.find((s) => s.photos?.some((p) => p.id === photo.id))
-    if (owner) setSelectedStopId(owner.id)
+    const idx = photos.findIndex((p) => p.id === photo.id)
+    if (idx !== -1) setLightboxIndex(idx)
   }
 
   return (
+    <>
     <section className="py-16">
       <div className="max-w-6xl mx-auto px-6">
         <h2 className="text-2xl font-semibold text-[#1d1d1f] mb-2">Mapa trasy</h2>
@@ -102,7 +104,10 @@ export default function TripMapGallery({ stops: allStops }: Props) {
                         </button>
                       ))}
                       {photos.length > 3 && (
-                        <div className="relative aspect-square overflow-hidden rounded-lg">
+                        <button
+                          onClick={() => setLightboxIndex(3)}
+                          className="relative aspect-square overflow-hidden rounded-lg cursor-zoom-in"
+                        >
                           <Image
                             src={photos[3].url}
                             alt=""
@@ -113,7 +118,7 @@ export default function TripMapGallery({ stops: allStops }: Props) {
                             <span className="text-white text-3xl font-bold leading-none">+{photos.length - 3}</span>
                             <span className="text-white/75 text-xs tracking-wide">dalších</span>
                           </div>
-                        </div>
+                        </button>
                       )}
                     </div>
                   ) : (
@@ -186,5 +191,15 @@ export default function TripMapGallery({ stops: allStops }: Props) {
         </div>
       </div>
     </section>
+
+    {lightboxIndex !== null && (
+      <Lightbox
+        photos={photos}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChange={setLightboxIndex}
+      />
+    )}
+    </>
   )
 }

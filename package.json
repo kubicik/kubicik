@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx tsx scripts/migrate.ts && npx tsx prisma/seed.ts && npx tsx scripts/import-kyrgyzstan.ts && npx tsx scripts/import-sample-prague.ts && next build",
+    "build": "npx tsx scripts/migrate.ts && npx tsx prisma/seed.ts && next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "test": "vitest run",
     "test:watch": "vitest",
