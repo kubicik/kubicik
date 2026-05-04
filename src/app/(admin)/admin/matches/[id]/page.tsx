@@ -4,13 +4,14 @@ import MatchForm from "@/components/admin/MatchForm"
 
 export default async function EditMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [match, matchAttendees, tripParticipants] = await Promise.all([
+  const [match, matchAttendees, tripParticipants, seasons] = await Promise.all([
     prisma.match.findUnique({
       where: { id },
       include: { photos: { orderBy: { order: "asc" } } },
     }),
     prisma.match.findMany({ select: { attendees: true } }),
     prisma.trip.findMany({ select: { participants: true } }),
+    prisma.season.findMany({ orderBy: { name: "desc" } }),
   ])
   if (!match) notFound()
 
@@ -34,7 +35,7 @@ export default async function EditMatchPage({ params }: { params: Promise<{ id: 
   return (
     <div>
       <h1 className="text-2xl font-semibold text-[#1d1d1f] mb-8">Upravit zápas</h1>
-      <MatchForm match={serialized} suggestions={suggestions} />
+      <MatchForm match={serialized} suggestions={suggestions} seasons={seasons.map((s) => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() }))} />
     </div>
   )
 }

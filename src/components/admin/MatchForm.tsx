@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import type { Match, MatchPhoto } from "@/types"
+import type { Match, MatchPhoto, Season } from "@/types"
 import { compressImage } from "@/lib/compressImage"
 import AttendeeInput from "./AttendeeInput"
 
@@ -22,9 +22,10 @@ const HOME_VENUE = "Tottenham Hotspur Stadium"
 interface Props {
   match?: Match & { photos?: MatchPhoto[] }
   suggestions?: string[]
+  seasons?: Season[]
 }
 
-export default function MatchForm({ match, suggestions = [] }: Props) {
+export default function MatchForm({ match, suggestions = [], seasons = [] }: Props) {
   const router = useRouter()
   const isEdit = !!match
 
@@ -42,6 +43,7 @@ export default function MatchForm({ match, suggestions = [] }: Props) {
   const [scoreSpurs, setScoreSpurs] = useState(match?.scoreSpurs?.toString() ?? "")
   const [scoreOpponent, setScoreOpponent] = useState(match?.scoreOpponent?.toString() ?? "")
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
+  const [seasonId, setSeasonId] = useState(match?.seasonId ?? "")
   const [videoUrl, setVideoUrl] = useState(match?.videoUrl ?? "")
   const [notes, setNotes] = useState(match?.notes ?? "")
   const [saving, setSaving] = useState(false)
@@ -117,6 +119,7 @@ export default function MatchForm({ match, suggestions = [] }: Props) {
         scoreSpurs: Number(scoreSpurs),
         scoreOpponent: Number(scoreOpponent),
         attendees,
+        seasonId: seasonId || null,
         videoUrl: videoUrl || null,
         notes: notes || null,
       }
@@ -165,6 +168,21 @@ export default function MatchForm({ match, suggestions = [] }: Props) {
               ))}
             </select>
           </div>
+          {seasons.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-[#6e6e73] mb-1">Sezóna</label>
+              <select
+                value={seasonId}
+                onChange={(e) => setSeasonId(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff] bg-white"
+              >
+                <option value="">— bez sezóny —</option>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div>

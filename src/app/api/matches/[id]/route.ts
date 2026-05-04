@@ -27,6 +27,7 @@ export async function PUT(req: Request, { params }: Ctx) {
       scoreSpurs: Number(body.scoreSpurs),
       scoreOpponent: Number(body.scoreOpponent),
       attendees: JSON.stringify(body.attendees ?? []),
+      seasonId: body.seasonId ?? null,
       videoUrl: body.videoUrl ?? null,
       notes: body.notes ?? null,
     },

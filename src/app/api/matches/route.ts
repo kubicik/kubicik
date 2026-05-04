@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       scoreSpurs: Number(body.scoreSpurs),
       scoreOpponent: Number(body.scoreOpponent),
       attendees: JSON.stringify(body.attendees ?? []),
+      seasonId: body.seasonId ?? null,
       videoUrl: body.videoUrl ?? null,
       notes: body.notes ?? null,
     },

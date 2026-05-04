@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import type { Match } from "@/types"
+import type { Match, Season } from "@/types"
 import AttendeeInput from "./AttendeeInput"
 
 const COMPETITIONS = [
@@ -23,9 +23,10 @@ interface Props {
   match: Match
   index: number
   suggestions?: string[]
+  seasons?: Season[]
 }
 
-export default function MatchInlineRow({ match, index, suggestions = [] }: Props) {
+export default function MatchInlineRow({ match, index, suggestions = [], seasons = [] }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -41,6 +42,7 @@ export default function MatchInlineRow({ match, index, suggestions = [] }: Props
   const [scoreSpurs, setScoreSpurs] = useState(match.scoreSpurs.toString())
   const [scoreOpponent, setScoreOpponent] = useState(match.scoreOpponent.toString())
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
+  const [seasonId, setSeasonId] = useState(match.seasonId ?? "")
 
   const result = resultBadge(match.scoreSpurs, match.scoreOpponent)
 
@@ -57,6 +59,7 @@ export default function MatchInlineRow({ match, index, suggestions = [] }: Props
     setScoreSpurs(match.scoreSpurs.toString())
     setScoreOpponent(match.scoreOpponent.toString())
     setAttendees(initialAttendees)
+    setSeasonId(match.seasonId ?? "")
   }
 
   async function handleSave() {
@@ -73,6 +76,7 @@ export default function MatchInlineRow({ match, index, suggestions = [] }: Props
         scoreSpurs: Number(scoreSpurs),
         scoreOpponent: Number(scoreOpponent),
         attendees,
+        seasonId: seasonId || null,
         videoUrl: match.videoUrl,
         notes: match.notes,
       }),
@@ -144,6 +148,20 @@ export default function MatchInlineRow({ match, index, suggestions = [] }: Props
           </div>
         </div>
 
+        {seasons.length > 0 && (
+          <div className="mb-3">
+            <label className="text-xs text-[#6e6e73] mb-1 block">Sezóna</label>
+            <select
+              value={seasonId}
+              onChange={(e) => setSeasonId(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff] bg-white"
+            >
+              <option value="">— bez sezóny —</option>
+              {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
             <label className="text-xs text-[#6e6e73]">Spurs</label>
@@ -209,6 +227,7 @@ export default function MatchInlineRow({ match, index, suggestions = [] }: Props
         </div>
         <p className="text-[#8e8e93] text-xs mt-0.5">
           {dateDisplay}
+          {match.season && ` · ${match.season.name}`}
           {attendeesDisplay && ` · ${attendeesDisplay}`}
           {match.videoUrl && " · 🎥"}
           {(match.photos?.length ?? 0) > 0 && ` · 📷 ${match.photos!.length}`}

@@ -220,6 +220,14 @@ export default function MatchList({ matches }: Props) {
   const goalsFor = matches.reduce((s, m) => s + m.scoreSpurs, 0)
   const goalsAgainst = matches.reduce((s, m) => s + m.scoreOpponent, 0)
 
+  // By attendee
+  const byAttendee = matches.reduce<Record<string, number>>((acc, m) => {
+    const names: string[] = (() => { try { return JSON.parse(m.attendees) } catch { return [] } })()
+    for (const n of names) acc[n] = (acc[n] ?? 0) + 1
+    return acc
+  }, {})
+  const attendeeEntries = Object.entries(byAttendee).sort((a, b) => b[1] - a[1])
+
   // By competition
   const byCompetition = matches.reduce<Record<string, number>>((acc, m) => {
     acc[m.competition] = (acc[m.competition] ?? 0) + 1
@@ -254,6 +262,23 @@ export default function MatchList({ matches }: Props) {
               </div>
             ))}
           </div>
+
+          {/* Attendees */}
+          {attendeeEntries.length > 0 && (
+            <div className="bg-white rounded-2xl border border-[#e5e5ea] px-5 py-4 mb-4">
+              <p className="text-xs font-semibold text-[#8e8e93] uppercase tracking-widest mb-3">S kým jsem byl</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2">
+                {attendeeEntries.map(([name, count]) => (
+                  <div key={name} className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-[#1d1d1f] truncate">{name}</span>
+                    <span className="text-sm font-semibold text-[#132257] flex-shrink-0">
+                      {count}×
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* By competition + by season */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
