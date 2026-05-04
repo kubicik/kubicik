@@ -144,22 +144,24 @@ export default function StopEditor({ tripId, initialStops }: Props) {
       </div>
 
       {/* Side panel — either stop list or stop editor, never both */}
-      <div className="w-[420px] overflow-y-auto flex flex-col gap-4">
+      <div className="w-[420px] flex flex-col min-h-0">
         {isEditing ? (
-          <StopForm
-            stop={selectedStop}
-            isNew={!!pendingLatLng}
-            stopNumber={stopNumber}
-            latLng={pendingLatLng ?? (selectedStop ? { lat: selectedStop.lat, lng: selectedStop.lng } : undefined)}
-            onSave={pendingLatLng ? handleSaveNew : (data) => handleUpdateStop(selectedStop!.id, data)}
-            onDelete={selectedStop ? () => handleDeleteStop(selectedStop.id) : undefined}
-            onClose={handleClose}
-            onAddPhoto={selectedStop ? (f) => handleAddPhoto(selectedStop.id, f) : undefined}
-            onDeletePhoto={selectedStop ? (pId) => handleDeletePhoto(selectedStop.id, pId) : undefined}
-          />
+          <div className="flex-1 overflow-y-auto">
+            <StopForm
+              stop={selectedStop}
+              isNew={!!pendingLatLng}
+              stopNumber={stopNumber}
+              latLng={pendingLatLng ?? (selectedStop ? { lat: selectedStop.lat, lng: selectedStop.lng } : undefined)}
+              onSave={pendingLatLng ? handleSaveNew : (data) => handleUpdateStop(selectedStop!.id, data)}
+              onDelete={selectedStop ? () => handleDeleteStop(selectedStop.id) : undefined}
+              onClose={handleClose}
+              onAddPhoto={selectedStop ? (f) => handleAddPhoto(selectedStop.id, f) : undefined}
+              onDeletePhoto={selectedStop ? (pId) => handleDeletePhoto(selectedStop.id, pId) : undefined}
+            />
+          </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#e5e5ea]">
+          <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-[#e5e5ea]">
               <h3 className="font-semibold text-[#1d1d1f] text-sm">
                 Zastávky
                 <span className="ml-2 text-[#8e8e93] font-normal">{stops.length}</span>
@@ -178,7 +180,7 @@ export default function StopEditor({ tripId, initialStops }: Props) {
                 <p className="text-xs text-[#c7c7cc] mt-1">Klikněte na mapu pro přidání</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#f2f2f7]">
+              <div className="flex-1 overflow-y-auto divide-y divide-[#f2f2f7]">
                 {sortedStops.map((stop, i) => (
                   <button
                     key={stop.id}

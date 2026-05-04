@@ -2,13 +2,21 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
 
 interface Props {
   user?: { name?: string | null; email?: string | null }
 }
 
-const navItems = [
+interface NavGroup {
+  label: string
+  href?: string
+  icon: React.ReactNode
+  children?: { label: string; href: string }[]
+}
+
+const navGroups: NavGroup[] = [
   {
     label: "Přehled",
     href: "/admin",
@@ -30,22 +38,16 @@ const navItems = [
     ),
   },
   {
-    label: "Spurs — zápasy",
-    href: "/admin/matches",
+    label: "Spurs",
     icon: (
       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
         <path d="M8 5v14l11-7z" />
       </svg>
     ),
-  },
-  {
-    label: "Spurs — sezóny",
-    href: "/admin/seasons",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
+    children: [
+      { label: "Zápasy", href: "/admin/matches" },
+      { label: "Sezóny", href: "/admin/seasons" },
+    ],
   },
   {
     label: "Uživatelé",
@@ -62,9 +64,37 @@ const navItems = [
 export default function AdminSidebar({ user }: Props) {
   const pathname = usePathname()
 
-  function isActive(href: string) {
-    if (href === "/admin") return pathname === "/admin"
-    return pathname.startsWith(href)
+  function isUnderPath(prefix: string) {
+    if (prefix === "/admin") return pathname === "/admin"
+    return pathname.startsWith(prefix)
+  }
+
+  // Auto-expand groups that contain the current route
+  const initialOpen = (group: NavGroup) =>
+    group.children?.some((c) => pathname.startsWith(c.href)) ?? false
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {}
+    for (const g of navGroups) {
+      if (g.children) map[g.label] = initialOpen(g)
+    }
+    return map
+  })
+
+  // Keep expanded when navigating within a group
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev }
+      for (const g of navGroups) {
+        if (g.children && initialOpen(g)) next[g.label] = true
+      }
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  function toggleGroup(label: string) {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }))
   }
 
   return (
@@ -83,21 +113,66 @@ export default function AdminSidebar({ user }: Props) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
-              isActive(item.href)
-                ? "bg-[#007aff] text-white"
-                : "text-[#3c3c43] hover:bg-[#f2f2f7]"
-            }`}
-          >
-            {item.icon}
-            {item.label}
-          </Link>
-        ))}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {navGroups.map((group) => {
+          if (group.children) {
+            const isOpen = openGroups[group.label] ?? false
+            const anyChildActive = group.children.some((c) => pathname.startsWith(c.href))
+            return (
+              <div key={group.label}>
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                    anyChildActive && !isOpen
+                      ? "bg-[#f0f6ff] text-[#007aff]"
+                      : "text-[#3c3c43] hover:bg-[#f2f2f7]"
+                  }`}
+                >
+                  {group.icon}
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <svg
+                    className={`w-4 h-4 text-[#8e8e93] transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {isOpen && (
+                  <div className="mt-0.5 ml-4 pl-4 border-l border-[#e5e5ea] space-y-0.5">
+                    {group.children.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`flex items-center px-3 py-2 rounded-xl text-sm transition-colors ${
+                          isUnderPath(child.href)
+                            ? "bg-[#007aff] text-white"
+                            : "text-[#3c3c43] hover:bg-[#f2f2f7]"
+                        }`}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          return (
+            <Link
+              key={group.href}
+              href={group.href!}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                isUnderPath(group.href!)
+                  ? "bg-[#007aff] text-white"
+                  : "text-[#3c3c43] hover:bg-[#f2f2f7]"
+              }`}
+            >
+              {group.icon}
+              {group.label}
+            </Link>
+          )
+        })}
       </nav>
 
       {/* User */}
