@@ -6,6 +6,7 @@ import Image from "next/image"
 import type { Match, MatchPhoto, Season } from "@/types"
 import { compressImage } from "@/lib/compressImage"
 import AttendeeInput from "./AttendeeInput"
+import YouTubeSearch from "./YouTubeSearch"
 
 const COMPETITIONS = [
   "Premier League",
@@ -23,6 +24,15 @@ interface Props {
   match?: Match & { photos?: MatchPhoto[] }
   suggestions?: string[]
   seasons?: Season[]
+}
+
+function extractVideoId(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes("youtube.com")) return u.searchParams.get("v")
+    if (u.hostname === "youtu.be") return u.pathname.slice(1)
+  } catch { /* invalid url */ }
+  return null
 }
 
 export default function MatchForm({ match, suggestions = [], seasons = [] }: Props) {
@@ -45,6 +55,7 @@ export default function MatchForm({ match, suggestions = [], seasons = [] }: Pro
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
   const [seasonId, setSeasonId] = useState(match?.seasonId ?? "")
   const [videoUrl, setVideoUrl] = useState(match?.videoUrl ?? "")
+  const [videoSearchOpen, setVideoSearchOpen] = useState(false)
   const [notes, setNotes] = useState(match?.notes ?? "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -335,13 +346,55 @@ export default function MatchForm({ match, suggestions = [], seasons = [] }: Pro
       {/* Video */}
       <div className="bg-white rounded-2xl border border-[#e5e5ea] p-6 space-y-3">
         <h2 className="text-sm font-semibold text-[#1d1d1f]">Video <span className="text-[#c7c7cc] font-normal">(volitelné)</span></h2>
-        <input
-          type="url"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="https://www.youtube.com/watch?v=..."
-          className="w-full px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff]"
-        />
+
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={(e) => { setVideoUrl(e.target.value); setVideoSearchOpen(false) }}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className="flex-1 px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff]"
+          />
+          <button
+            type="button"
+            onClick={() => setVideoSearchOpen((v) => !v)}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border transition-colors ${
+              videoSearchOpen
+                ? "bg-[#ff0000] text-white border-[#ff0000]"
+                : "bg-white text-[#3a3a3c] border-[#e5e5ea] hover:bg-[#f2f2f7]"
+            }`}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+            </svg>
+            Hledat
+          </button>
+        </div>
+
+        {videoSearchOpen && (
+          <YouTubeSearch
+            initialQuery={[
+              "Tottenham",
+              opponent || "",
+              competition !== "Premier League" ? competition : "",
+              date ? new Date(date).toLocaleDateString("cs-CZ", { month: "long", year: "numeric" }) : "",
+            ].filter(Boolean).join(" ")}
+            onSelect={(url) => { setVideoUrl(url); setVideoSearchOpen(false) }}
+            onClose={() => setVideoSearchOpen(false)}
+          />
+        )}
+
+        {videoUrl && !videoSearchOpen && extractVideoId(videoUrl) && (
+          <div className="aspect-video rounded-xl overflow-hidden bg-black">
+            <iframe
+              src={`https://www.youtube.com/embed/${extractVideoId(videoUrl)}`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        )}
+
         <p className="text-xs text-[#8e8e93]">YouTube odkaz bude zobrazen jako přehrávač na veřejné stránce.</p>
       </div>
 

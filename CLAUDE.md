@@ -27,6 +27,7 @@ DATABASE_URL=libsql://xxx.turso.io  # Turso remote (production)
 TURSO_AUTH_TOKEN=eyJ...             # required when using Turso
 AUTH_SECRET=<random-string>         # NextAuth JWT secret
 BLOB_READ_WRITE_TOKEN=...           # Vercel Blob (production uploads)
+YOUTUBE_API_KEY=AIza...             # YouTube Data API v3 key (for match video search)
 ```
 
 `DATABASE_URL` has a hardcoded fallback to `file:<cwd>/dev.db` in `prisma.config.ts`, `src/lib/prisma.ts`, and `src/auth.ts`, so local dev works without `.env`.
