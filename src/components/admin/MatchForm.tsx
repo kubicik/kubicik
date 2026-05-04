@@ -15,6 +15,7 @@ const COMPETITIONS = [
   "UEFA Conference League",
   "FA Cup",
   "EFL Cup",
+  "Superpohár",
   "Přátelský zápas",
 ]
 

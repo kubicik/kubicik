@@ -25,7 +25,7 @@ Pravidla:
 - Pokud aktualizuješ existující zápasy, zachovej jejich "id" pole beze změny — záznamy se shodným id budou aktualizovány
 - Nové zápasy bez "id" budou vytvořeny, záznamy v databázi jejichž "id" v JSON chybí budou smazány
 - date je ISO 8601 datetime (např. "2023-09-17T14:00:00.000Z"), čas výkopu pokud je znám, jinak 12:00
-- competition musí být jedna z hodnot: Premier League, Champions League, Europa League, UEFA Conference League, FA Cup, EFL Cup, Přátelský zápas
+- competition musí být jedna z hodnot: Premier League, Champions League, Europa League, UEFA Conference League, FA Cup, EFL Cup, Superpohár, Přátelský zápas
 - homeAway musí být "home" nebo "away" — "home" = zápas na stadionu Spurs, "away" = venku
 - venue je název stadionu, lze vynechat (null) pro domácí zápasy kde je stadium jasný
 - scoreSpurs a scoreOpponent jsou celá čísla — výsledek na konci utkání

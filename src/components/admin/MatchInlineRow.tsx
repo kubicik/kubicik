@@ -8,7 +8,7 @@ import AttendeeInput from "./AttendeeInput"
 
 const COMPETITIONS = [
   "Premier League", "Champions League", "Europa League",
-  "UEFA Conference League", "FA Cup", "EFL Cup", "Přátelský zápas",
+  "UEFA Conference League", "FA Cup", "EFL Cup", "Superpohár", "Přátelský zápas",
 ]
 
 const HOME_VENUE = "Tottenham Hotspur Stadium"

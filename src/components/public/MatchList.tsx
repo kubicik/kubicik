@@ -33,6 +33,7 @@ const COMPETITION_COLORS: Record<string, string> = {
   "UEFA Conference League": "bg-[#0d3c6e] text-white",
   "FA Cup":                 "bg-[#002147] text-white",
   "EFL Cup":                "bg-[#008080] text-white",
+  "Superpohár":             "bg-[#d4af37] text-white",
   "Přátelský zápas":        "bg-[#8e8e93] text-white",
 }
 
