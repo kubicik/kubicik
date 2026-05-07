@@ -83,6 +83,7 @@ model Match {
   venue          String?
   scoreSpurs     Int
   scoreOpponent  Int
+  outcome        String?
   attendees      String       @default("[]")
   videoUrl       String?
   notes          String?

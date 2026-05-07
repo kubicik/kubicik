@@ -16,6 +16,7 @@ export async function GET() {
     venue: m.venue,
     scoreSpurs: m.scoreSpurs,
     scoreOpponent: m.scoreOpponent,
+    outcome: m.outcome,
     attendees: (() => { try { return JSON.parse(m.attendees) } catch { return [] } })(),
     videoUrl: m.videoUrl,
     notes: m.notes,

@@ -26,6 +26,7 @@ export async function PUT(req: Request, { params }: Ctx) {
       venue: body.venue ?? null,
       scoreSpurs: Number(body.scoreSpurs),
       scoreOpponent: Number(body.scoreOpponent),
+      outcome: body.outcome ?? null,
       attendees: JSON.stringify(body.attendees ?? []),
       seasonId: body.seasonId ?? null,
       videoUrl: body.videoUrl ?? null,
@@ -46,8 +47,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 function serialize(m: {
   id: string; date: Date; competition: string; opponent: string
   homeAway: string; venue: string | null; scoreSpurs: number; scoreOpponent: number
-  attendees: string; videoUrl: string | null; notes: string | null
-  createdAt: Date; updatedAt: Date
+  outcome: string | null; attendees: string; videoUrl: string | null; notes: string | null
+  seasonId: string | null; createdAt: Date; updatedAt: Date
 }) {
   return {
     ...m,

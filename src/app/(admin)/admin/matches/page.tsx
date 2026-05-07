@@ -48,6 +48,7 @@ export default async function AdminMatchesPage({
     venue: m.venue,
     scoreSpurs: m.scoreSpurs,
     scoreOpponent: m.scoreOpponent,
+    outcome: m.outcome,
     attendees: m.attendees,
     seasonId: m.seasonId,
     videoUrl: m.videoUrl,

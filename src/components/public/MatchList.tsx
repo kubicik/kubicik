@@ -144,9 +144,21 @@ function MatchCard({ match, index }: MatchCardProps) {
                 {match.homeAway === "home" ? match.scoreOpponent : match.scoreSpurs}
               </span>
             </div>
-            <span className={`text-xs font-bold text-white px-2.5 py-0.5 rounded-full ${result.bg}`}>
-              {result.text}
-            </span>
+            <div className="flex items-center gap-1">
+              <span className={`text-xs font-bold text-white px-2.5 py-0.5 rounded-full ${result.bg}`}>
+                {result.text}
+              </span>
+              {match.outcome === "aet" && (
+                <span className="text-xs font-semibold text-[#8e8e93] px-2 py-0.5 rounded-full bg-[#f2f2f7]">
+                  AET
+                </span>
+              )}
+              {match.outcome === "pen" && (
+                <span className="text-xs font-semibold text-[#8e8e93] px-2 py-0.5 rounded-full bg-[#f2f2f7]">
+                  PEN
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex-1 text-right">
             <p className="text-xs font-semibold text-[#8e8e93] uppercase tracking-wide mb-1">

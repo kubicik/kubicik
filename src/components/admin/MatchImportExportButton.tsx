@@ -15,6 +15,7 @@ const AI_PROMPT = `Vytvoř seznam zápasů Tottenham Hotspur ve formátu JSON po
     "scoreSpurs": 2,
     "scoreOpponent": 1,
     "attendees": ["Jméno1", "Jméno2"],
+    "outcome": null,
     "videoUrl": "https://www.youtube.com/watch?v=XXXXXXXXXXX",
     "notes": "Popis atmosféry, zážitků, co se přihodilo.",
     "seasonId": null
@@ -32,6 +33,7 @@ Pravidla:
 - attendees je pole jmen, kdo byl na zápase fyzicky přítomen
 - videoUrl je přímý YouTube odkaz nebo null pokud neexistuje
 - notes je volný text s osobním popisem zápasu, atmosféry a zážitků — může být prázdný string nebo null
+- outcome je null pro 90 min, "aet" pro po prodloužení, "pen" pro po penaltách
 - seasonId ponech beze změny nebo nastav na null
 - Vrať vždy array, i pro jediný zápas`
 

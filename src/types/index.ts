@@ -47,6 +47,7 @@ export interface Match {
   venue: string | null
   scoreSpurs: number
   scoreOpponent: number
+  outcome: string | null
   attendees: string
   videoUrl: string | null
   notes: string | null

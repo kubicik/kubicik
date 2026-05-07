@@ -55,6 +55,7 @@ export default function MatchForm({ match, suggestions = [], seasons = [] }: Pro
   const [scoreOpponent, setScoreOpponent] = useState(match?.scoreOpponent?.toString() ?? "")
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
   const [seasonId, setSeasonId] = useState(match?.seasonId ?? "")
+  const [outcome, setOutcome] = useState<string>(match?.outcome ?? "")
   const [videoUrl, setVideoUrl] = useState(match?.videoUrl ?? "")
   const [videoSearchOpen, setVideoSearchOpen] = useState(false)
   const [notes, setNotes] = useState(match?.notes ?? "")
@@ -132,6 +133,7 @@ export default function MatchForm({ match, suggestions = [], seasons = [] }: Pro
         scoreOpponent: Number(scoreOpponent),
         attendees,
         seasonId: seasonId || null,
+        outcome: outcome || null,
         videoUrl: videoUrl || null,
         notes: notes || null,
       }
@@ -264,6 +266,25 @@ export default function MatchForm({ match, suggestions = [], seasons = [] }: Pro
               onChange={(e) => setScoreOpponent(e.target.value)}
               className="w-full px-3 py-2 text-2xl font-bold text-center border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff]"
             />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#6e6e73] mb-2">Ukončení zápasu</label>
+          <div className="flex gap-2">
+            {([["", "90 min"], ["aet", "Po prodloužení"], ["pen", "Po penaltách"]] as const).map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setOutcome(val)}
+                className={`flex-1 py-2 text-xs rounded-xl border transition-colors ${
+                  outcome === val
+                    ? "bg-[#132257] text-white border-[#132257]"
+                    : "bg-white text-[#3a3a3c] border-[#e5e5ea] hover:bg-[#f2f2f7]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>

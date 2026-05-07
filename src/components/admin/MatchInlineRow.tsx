@@ -41,6 +41,7 @@ export default function MatchInlineRow({ match, index, suggestions = [], seasons
   const [homeAway, setHomeAway] = useState<"home" | "away">(match.homeAway as "home" | "away")
   const [scoreSpurs, setScoreSpurs] = useState(match.scoreSpurs.toString())
   const [scoreOpponent, setScoreOpponent] = useState(match.scoreOpponent.toString())
+  const [outcome, setOutcome] = useState(match.outcome ?? "")
   const [attendees, setAttendees] = useState<string[]>(initialAttendees)
   const [seasonId, setSeasonId] = useState(match.seasonId ?? "")
 
@@ -58,6 +59,7 @@ export default function MatchInlineRow({ match, index, suggestions = [], seasons
     setHomeAway(match.homeAway as "home" | "away")
     setScoreSpurs(match.scoreSpurs.toString())
     setScoreOpponent(match.scoreOpponent.toString())
+    setOutcome(match.outcome ?? "")
     setAttendees(initialAttendees)
     setSeasonId(match.seasonId ?? "")
   }
@@ -75,6 +77,7 @@ export default function MatchInlineRow({ match, index, suggestions = [], seasons
         venue: homeAway === "home" ? HOME_VENUE : (match.homeAway !== homeAway ? "" : match.venue),
         scoreSpurs: Number(scoreSpurs),
         scoreOpponent: Number(scoreOpponent),
+        outcome: outcome || null,
         attendees,
         seasonId: seasonId || null,
         videoUrl: match.videoUrl,
@@ -179,6 +182,22 @@ export default function MatchInlineRow({ match, index, suggestions = [], seasons
               className="w-14 px-2 py-1.5 text-base font-bold text-center border border-[#e5e5ea] rounded-xl focus:outline-none focus:border-[#007aff]"
             />
             <label className="text-xs text-[#6e6e73]">Soupeř</label>
+          </div>
+          <div className="flex gap-1 ml-auto">
+            {([["", "90′"], ["aet", "AET"], ["pen", "PEN"]] as const).map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setOutcome(val)}
+                className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+                  outcome === val
+                    ? "bg-[#132257] text-white border-[#132257]"
+                    : "bg-white text-[#6e6e73] border-[#e5e5ea] hover:bg-[#f2f2f7]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
