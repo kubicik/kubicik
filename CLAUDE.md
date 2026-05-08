@@ -10,14 +10,16 @@ Next.js 16 has breaking changes from earlier versions. Read `node_modules/next/d
 
 ```bash
 npm run dev          # Start dev server (http://localhost:3000)
-npm run build        # migrate + seed + import sample data + next build
+npm run build        # migrate + seed + next build
 npm run db:seed      # Create admin user (admin/admin) if missing
 npm test             # Run Vitest test suite (once)
 npm run test:watch   # Run Vitest in watch mode
 npx vitest run src/app/api/upload/__tests__/route.test.ts  # Run a single test file
-npx prisma migrate dev --name <name>   # Create a new migration
-npx prisma studio                      # Browse the database
+npx prisma generate                        # Regenerate client after schema change
+npx prisma studio                          # Browse the database
 ```
+
+**Migrations** — do NOT use `prisma migrate dev`. Instead, write SQL manually in `prisma/migrations/<timestamp_name>/migration.sql` and update `schema.prisma`. The custom runner `scripts/migrate.ts` applies unapplied migrations on every build.
 
 ## Environment Variables
 
@@ -42,13 +44,14 @@ YOUTUBE_API_KEY=AIza...             # YouTube Data API v3 key (for match video s
 - Import from `@/generated/prisma/client`, not `@prisma/client`
 - The adapter (`PrismaLibSql`) takes `{ url, authToken? }` directly — do **not** call `createClient()` manually
 
-The SQLite file is `dev.db` in the **project root**. `scripts/migrate.ts` is a custom migration runner (Prisma CLI doesn't support `libsql://`) — it checks `_prisma_migrations` to skip already-applied migrations and uses `client.batch()`.
+The SQLite file is `dev.db` in the **project root**.
 
 **JSON fields stored as TEXT** — parse/stringify at every API boundary, no ORM transform:
 - `Trip.participants` — `"[]"` JSON array of name strings
 - `Trip.tips` — `{"logistika":[],"pozor":[]}` or `null`
 - `Trip.coverPhotoFocus` — `{"x":0.5,"y":0.7}` focal point for cover image cropping, or `null`
 - `Stop.tags` — `[{"emoji":"🛵","label":"46 km na skútru"}]` array of `{ emoji, label }` objects, or `null`
+- `Match.attendees` — `"[]"` JSON array of name strings (same pattern as Trip.participants)
 
 **Stop description markdown** is a custom subset rendered identically in `StopForm.tsx` (admin preview) and `TripDays.tsx` (public): `**bold**`, `*italic*`, `==highlight==` (amber mark), `> blockquote` (blue left-border). Double newline = paragraph break.
 
@@ -69,15 +72,40 @@ src/app/
     page.tsx         # Homepage: published trips grid + world map
     trips/[slug]/    # Trip detail: hero, map, stop timeline, tips
     participants/    # Participant index + per-person trip list
+    spurs/           # Tottenham match history (public)
   (admin)/           # Auth required — layout has sidebar
     error.tsx        # Error boundary: catches server component crashes
     admin/
       trips/[id]/stops/  # Map-based stop editor (most complex page)
+      matches/       # Match list with inline editing + new/edit forms
+      seasons/       # Season registry (číselník)
   api/               # REST endpoints; all protected except GET /api/trips
   auth/signin/       # Custom credentials login page
 ```
 
 Route groups `(public)` and `(admin)` share the root `layout.tsx` but have separate nested layouts. There is **no** `src/app/page.tsx` — the homepage is served entirely by `(public)/page.tsx`.
+
+The admin sidebar (`AdminSidebar.tsx`) uses a multi-level nav with collapsible groups. **Spurs** is a parent group with **Zápasy** and **Sezóny** as children. Groups auto-expand when the active route is under them.
+
+### Matches (Spurs section)
+
+Three models: `Season` (číselník), `Match`, `MatchPhoto`. Key non-obvious fields:
+
+- `Match.homeAway` — `"home"` | `"away"`. When home, venue is auto-filled to `"Tottenham Hotspur Stadium"`.
+- `Match.outcome` — `null` (90 min) | `"aet"` (after extra time) | `"pen"` (after penalties). Shown as AET/PEN badge on public page.
+- `Match.attendees` — JSON TEXT, same pattern as `Trip.participants`.
+- `Match.seasonId` — nullable FK to `Season`.
+
+**Competition values** (exhaustive list): `"Premier League"`, `"Champions League"`, `"Europa League"`, `"UEFA Conference League"`, `"FA Cup"`, `"EFL Cup"`, `"Superpohár"`, `"Přátelský zápas"`. Keep in sync across `MatchForm.tsx`, `MatchInlineRow.tsx`, `MatchList.tsx` (color map), and the AI prompt in `MatchImportExportButton.tsx`.
+
+**Match JSON Import/Export** mirrors the trip stops pattern — ID-based diff with preview:
+- `GET /api/matches/export` — includes `id`, `seasonId`, `outcome`, `photos` per match
+- `POST /api/matches/import` — accepts `{ preview: boolean, matches: [...] }` or plain array; computes toUpdate/toCreate/toDelete based on `id` presence; `preview: true` returns stats without writing
+- `MatchImportExportButton.tsx` runs the same two-step (input → preview → confirm) UI as `TripJsonUpdateButton.tsx`
+
+**Attendee autocomplete** (`AttendeeInput.tsx`) — `GET /api/attendees` returns deduplicated names from all existing matches + trips. Uses `onMouseDown` not `onClick` in the dropdown to prevent blur-before-click race condition.
+
+**YouTube video search** — `GET /api/youtube/search?q=` proxies YouTube Data API v3. Requires `YOUTUBE_API_KEY`. Returns `{ videos: [{ videoId, title, thumbnail, channelTitle, publishedAt }] }`. Used by `YouTubeSearch.tsx` component in `MatchForm`.
 
 ### Map Components
 
@@ -110,7 +138,7 @@ Leaflet icon defaults are fixed via `L.Icon.Default.mergeOptions` pointing to `/
 
 ### File Uploads
 
-`POST /api/upload` accepts `multipart/form-data` with fields `file` (File) and `type` (`"covers"` | `"stops"`).
+`POST /api/upload` accepts `multipart/form-data` with fields `file` (File) and `type` (`"covers"` | `"stops"` | `"matches"`).
 
 **Always compress client-side** before uploading — use `compressImage(file, type)` from `src/lib/compressImage.ts`. This converts to WebP ≤3.5 MB, staying under Vercel's 4.5 MB function payload limit. The route still validates MIME type and enforces a 5 MB hard limit.
 
@@ -126,13 +154,15 @@ Blob store must be created with **Public** access in Vercel dashboard — Privat
 Three API endpoints handle bulk trip data transfer:
 - `GET /api/trips/[id]/export` — downloads `<slug>.json` with all trip fields, stops, and photos; omits `id`/`slug`/`published`
 - `POST /api/trips/import` — creates a new **draft** trip from JSON including stops and photos; auto-generates slug from title
-- `POST /api/trips/[id]/update-from-json` — updates trip metadata then **deletes all existing stops** (cascades to photos) and recreates them from the JSON payload. No undo.
+- `POST /api/trips/[id]/update-from-json` — updates trip metadata and syncs stops via ID-based diff: updates stops whose `id` matches, creates stops with no/unknown `id`, deletes stops not present in JSON. Supports `preview: true` to return diff stats without writing. **No undo.**
 
-`TripImportButton` (trips list) has a copyable AI prompt template describing the full JSON schema. `TripJsonUpdateButton` (trip detail) has a "Načíst aktuální" button that pre-fills the textarea from the export endpoint.
+`TripImportButton` (trips list) has a copyable AI prompt template. `TripJsonUpdateButton` (trip detail) has a "Načíst aktuální" button and two-step input → preview → confirm flow.
 
 ### Stop Editor Panel
 
-`/admin/trips/[id]/stops` renders a two-panel layout: Leaflet map (flex-1 left) and a `w-[420px]` right panel. The panel is either the **stop list** or the **stop form** — never both simultaneously. The switch is driven by `pendingLatLng || selectedStop` state in `StopEditor.tsx`.
+`/admin/trips/[id]/stops` renders a two-panel layout: Leaflet map (`flex-1` left) and a `w-[420px]` right panel bounded by `h-[calc(100vh-160px)]`. The panel is either the **stop list** or the **stop form** — never both simultaneously. The switch is driven by `pendingLatLng || selectedStop` state in `StopEditor.tsx`.
+
+**Scroll pattern** — the right panel uses `flex flex-col min-h-0`. The stop list card uses `flex-1 flex flex-col min-h-0 overflow-hidden` with a `flex-shrink-0` header and `flex-1 overflow-y-auto` list. The stop form is wrapped in `flex-1 overflow-y-auto`. The `min-h-0` on flex children is required in column-flex contexts to allow scroll to activate — without it `min-height: auto` prevents shrinking.
 
 `StopForm` receives `stopNumber` and `latLng` props (for GPS display). Photo upload uses `multiple` and processes files **sequentially** (one compress+upload at a time) to avoid saturating the upload endpoint.
 
