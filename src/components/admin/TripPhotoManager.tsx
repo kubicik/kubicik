@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { compressImage } from "@/lib/compressImage"
 import type { TripPhoto } from "@/types"
@@ -17,6 +17,44 @@ interface Props {
   initialPhotos: TripPhoto[]
 }
 
+function PhotoPreviewModal({ url, caption, onClose }: { url: string; caption: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-4xl max-h-[90vh] w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={url}
+          alt={caption || "Náhled fotky"}
+          className="w-full h-full object-contain max-h-[85vh] rounded-xl"
+        />
+        {caption && (
+          <p className="mt-2 text-center text-white/80 text-sm">{caption}</p>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute -top-3 -right-3 w-8 h-8 bg-white text-[#1d1d1f] rounded-full flex items-center justify-center shadow-lg hover:bg-[#f2f2f7] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 interface PhotoCardProps {
   photo: TripPhoto
   stops: StopRef[]
@@ -26,15 +64,16 @@ interface PhotoCardProps {
 
 function PhotoCard({ photo, stops, onUpdate, onDelete }: PhotoCardProps) {
   const [caption, setCaption] = useState(photo.caption ?? "")
+  const [preview, setPreview] = useState(false)
   const sortedStops = [...stops].sort((a, b) => a.order - b.order)
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#e5e5ea] overflow-hidden">
-      <div className="relative aspect-[4/3] bg-[#f2f2f7]">
+      <div className="relative aspect-[4/3] bg-[#f2f2f7] cursor-zoom-in" onClick={() => setPreview(true)}>
         <Image src={photo.url} alt={caption || "Fotka výletu"} fill className="object-cover" sizes="220px" />
         <button
           type="button"
-          onClick={() => onDelete(photo.id)}
+          onClick={(e) => { e.stopPropagation(); onDelete(photo.id) }}
           className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
           title="Smazat fotku"
         >
@@ -48,6 +87,9 @@ function PhotoCard({ photo, stops, onUpdate, onDelete }: PhotoCardProps) {
           </span>
         )}
       </div>
+      {preview && (
+        <PhotoPreviewModal url={photo.url} caption={caption} onClose={() => setPreview(false)} />
+      )}
       <div className="p-2 space-y-1.5">
         <input
           type="text"
