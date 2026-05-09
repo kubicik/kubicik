@@ -4,7 +4,8 @@ import Image from "next/image"
 import TripMapGallery from "@/components/public/TripMapGallery"
 import TripDays from "@/components/public/TripDays"
 import TripTips from "@/components/public/TripTips"
-import type { Stop, Photo } from "@/types"
+import TripDronePhotos from "@/components/public/TripDronePhotos"
+import type { Stop, Photo, TripPhoto } from "@/types"
 
 export const revalidate = 60
 
@@ -43,6 +44,10 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
         orderBy: { order: "asc" },
         include: { photos: { orderBy: { order: "asc" } } },
       },
+      tripPhotos: {
+        where: { isDrone: true },
+        orderBy: { order: "asc" },
+      },
     },
   })
   if (!trip) notFound()
@@ -71,6 +76,17 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
       order: p.order,
       createdAt: p.createdAt.toISOString(),
     })),
+  }))
+
+  const dronePhotos: TripPhoto[] = trip.tripPhotos.map((p) => ({
+    id: p.id,
+    tripId: p.tripId,
+    stopId: p.stopId,
+    isDrone: p.isDrone,
+    url: p.url,
+    caption: p.caption,
+    order: p.order,
+    createdAt: p.createdAt.toISOString(),
   }))
 
   const days = dayCount(trip.startDate, trip.endDate)
@@ -143,6 +159,16 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
           )}
         </div>
       </header>
+
+      {/* ─── DRONE PHOTOS ─────────────────────────────────────────── */}
+      {dronePhotos.length > 0 && (
+        <>
+          <div className="max-w-3xl mx-auto px-6">
+            <hr className="border-[#e5e5ea]" />
+          </div>
+          <TripDronePhotos photos={dronePhotos} />
+        </>
+      )}
 
       {/* ─── THIN DIVIDER ─────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-6">

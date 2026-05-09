@@ -4,6 +4,7 @@ const PRESETS = {
   covers:  { maxWidthOrHeight: 2400, initialQuality: 0.85 },
   stops:   { maxWidthOrHeight: 1800, initialQuality: 0.85 },
   matches: { maxWidthOrHeight: 1800, initialQuality: 0.85 },
+  trips:   { maxWidthOrHeight: 1800, initialQuality: 0.85 },
 } as const
 
 /**
@@ -15,7 +16,7 @@ const PRESETS = {
  */
 export async function compressImage(
   file: File,
-  type: "covers" | "stops" | "matches" = "stops"
+  type: "covers" | "stops" | "matches" | "trips" = "stops"
 ): Promise<File> {
   const preset = PRESETS[type]
   const compressed = await imageCompression(file, {

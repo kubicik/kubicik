@@ -58,6 +58,17 @@ export interface Match {
   season?: Season | null
 }
 
+export interface TripPhoto {
+  id: string
+  tripId: string
+  stopId: string | null
+  isDrone: boolean
+  url: string
+  caption: string | null
+  order: number
+  createdAt: string
+}
+
 export interface Trip {
   id: string
   slug: string
@@ -74,4 +85,5 @@ export interface Trip {
   createdAt: string
   updatedAt: string
   stops?: Stop[]
+  tripPhotos?: TripPhoto[]
 }
