@@ -45,7 +45,6 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
         include: { photos: { orderBy: { order: "asc" } } },
       },
       tripPhotos: {
-        where: { isDrone: true },
         orderBy: { order: "asc" },
       },
     },
@@ -55,6 +54,16 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
   const participants = (() => {
     try { return JSON.parse(trip.participants) as string[] } catch { return [] }
   })()
+
+  // Non-drone TripPhotos grouped by stopId — merged into each stop's photo list
+  const tripPhotosByStop = new Map<string, Photo[]>()
+  for (const p of trip.tripPhotos) {
+    if (!p.isDrone && p.stopId) {
+      const arr = tripPhotosByStop.get(p.stopId) ?? []
+      arr.push({ id: p.id, stopId: p.stopId, url: p.url, caption: p.caption, order: p.order, createdAt: p.createdAt.toISOString() })
+      tripPhotosByStop.set(p.stopId, arr)
+    }
+  }
 
   const stops: Stop[] = trip.stops.map((s) => ({
     id: s.id,
@@ -68,17 +77,20 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
     tags: s.tags,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
-    photos: s.photos.map((p): Photo => ({
-      id: p.id,
-      stopId: p.stopId,
-      url: p.url,
-      caption: p.caption,
-      order: p.order,
-      createdAt: p.createdAt.toISOString(),
-    })),
+    photos: [
+      ...s.photos.map((p): Photo => ({
+        id: p.id,
+        stopId: p.stopId,
+        url: p.url,
+        caption: p.caption,
+        order: p.order,
+        createdAt: p.createdAt.toISOString(),
+      })),
+      ...(tripPhotosByStop.get(s.id) ?? []),
+    ],
   }))
 
-  const dronePhotos: TripPhoto[] = trip.tripPhotos.map((p) => ({
+  const dronePhotos: TripPhoto[] = trip.tripPhotos.filter((p) => p.isDrone).map((p) => ({
     id: p.id,
     tripId: p.tripId,
     stopId: p.stopId,
