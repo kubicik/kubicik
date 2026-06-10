@@ -11,6 +11,7 @@ Next.js 16 has breaking changes from earlier versions. Read `node_modules/next/d
 ```bash
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # migrate + seed + next build
+npm run lint         # ESLint
 npm run db:seed      # Create admin user (admin/admin) if missing
 npm test             # Run Vitest test suite (once)
 npm run test:watch   # Run Vitest in watch mode
@@ -77,6 +78,7 @@ src/app/
     error.tsx        # Error boundary: catches server component crashes
     admin/
       trips/[id]/stops/  # Map-based stop editor (most complex page)
+      trips/[id]/photos/ # TripPhoto bulk manager (drone + stop assignment)
       matches/       # Match list with inline editing + new/edit forms
       seasons/       # Season registry (číselník)
   api/               # REST endpoints; all protected except GET /api/trips
@@ -138,7 +140,7 @@ Leaflet icon defaults are fixed via `L.Icon.Default.mergeOptions` pointing to `/
 
 ### File Uploads
 
-`POST /api/upload` accepts `multipart/form-data` with fields `file` (File) and `type` (`"covers"` | `"stops"` | `"matches"`).
+`POST /api/upload` accepts `multipart/form-data` with fields `file` (File) and `type` (`"covers"` | `"stops"` | `"matches"` | `"trips"`).
 
 **Always compress client-side** before uploading — use `compressImage(file, type)` from `src/lib/compressImage.ts`. This converts to WebP ≤3.5 MB, staying under Vercel's 4.5 MB function payload limit. The route still validates MIME type and enforces a 5 MB hard limit.
 
@@ -169,3 +171,47 @@ Three API endpoints handle bulk trip data transfer:
 ### Admin Navigation
 
 After a successful form save, navigate with `router.push(url)` only — **never** call `router.refresh()` immediately after. Combining both corrupts Next.js App Router's navigation state and causes "This page couldn't load" on the destination page.
+
+### TripPhoto vs Photo (two separate photo models)
+
+There are two distinct photo models — do not confuse them:
+
+- **`Photo`** — stop-level photos, FK to `Stop`. Managed inside `StopForm.tsx` (the stop editor). Deleted via `DELETE /api/photos/[photoId]`.
+- **`TripPhoto`** — trip-level photos, FK to `Trip` with optional `stopId`. Managed via `TripPhotoManager.tsx` at `/admin/trips/[id]/photos`.
+
+`TripPhoto` has two special flags:
+- `isDrone: boolean` — drone/aerial photos; displayed in the `TripDronePhotos` section on public trip detail.
+- `stopId: string | null` — optional stop assignment; when set, the photo appears inline in the stop timeline on public trip detail.
+
+`TripPhotoManager` sorts photos into three columns: drone, unassigned, and per-stop buckets.
+
+### Shared Types and Date Serialization
+
+All shared TypeScript interfaces live in `src/types/index.ts`. Import from `@/types`, not from the Prisma-generated client.
+
+All Prisma `DateTime` fields are serialized to ISO strings (`.toISOString()`) before being passed from server components to client components. The interfaces in `src/types/index.ts` reflect this — every date field is typed as `string`.
+
+### Public Page Caching (ISR)
+
+Public pages use `export const revalidate = 60` for 1-minute ISR. The trip detail page additionally uses `generateStaticParams` to pre-render published trip slugs at build time.
+
+### Kartičky (Card Collection)
+
+Three models: `CardSeries`, `Card`, `CardVariant`. Key design decisions:
+
+- `CardSeries.displayMode` — `"missing_only"` | `"full_collection"`. Controls the public checklist view.
+- `CardSeries.totalCardsCount` — user-set total (e.g. 500 base cards). Used as denominator for progress bar percentage: `ownedVariants / totalCardsCount`.
+- `Card.number` — card number/code (string, e.g. `"G-12"`). Unique per series: `@@unique([seriesId, number])`.
+- `CardVariant` — represents one version of a card (Base, Red /99, Gold /25). `limitNumber` is nullable; `isOwned` is toggled via `PUT /api/card-variants/[id]`.
+
+**AI Import flow** — `POST /api/card-series/[id]/import` accepts a JSON array of `{ number, name, variants: [{ variant_name, limit_number }] }`. If a card with the same number already exists, only new variants are added (no duplicates). The admin UI shows a copyable AI prompt; user processes raw checklist text in external AI, pastes resulting JSON, submits.
+
+**Public routes**: `/kartickar` (series list with progress bars), `/kartickar/[slug]` (detail with checklist).
+
+**Admin routes**: `/admin/kartickar` (list + delete), `/admin/kartickar/new` (create), `/admin/kartickar/[id]` (edit + import + toggle is_owned).
+
+**Progress calculation**: `Math.min(100, Math.round(ownedVariants / totalCardsCount * 100))`. Color thresholds: green at 100%, blue above 50%, amber below.
+
+### Trip Fields
+
+`Trip.tripType` valid values: `"roadtrip"`, `"trekking"`, `"město"`, `"dobrodružství"`. Keep in sync across `TripForm.tsx`, `TripDays.tsx`, and `(public)/trips/[slug]/page.tsx`.

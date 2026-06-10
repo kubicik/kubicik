@@ -69,6 +69,39 @@ export interface TripPhoto {
   createdAt: string
 }
 
+export interface CardVariant {
+  id: string
+  cardId: string
+  variantName: string
+  limitNumber: number | null
+  isOwned: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Card {
+  id: string
+  seriesId: string
+  number: string
+  name: string
+  order: number
+  createdAt: string
+  variants?: CardVariant[]
+}
+
+export interface CardSeries {
+  id: string
+  name: string
+  year: number
+  displayMode: "missing_only" | "full_collection"
+  totalCardsCount: number
+  imageUrl: string | null
+  slug: string
+  createdAt: string
+  updatedAt: string
+  cards?: Card[]
+}
+
 export interface Trip {
   id: string
   slug: string

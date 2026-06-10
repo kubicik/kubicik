@@ -119,3 +119,44 @@ model MatchPhoto {
   order     Int      @default(0)
   createdAt DateTime @default(now())
 }
+
+model CardSeries {
+  id              String   @id @default(cuid())
+  name            String
+  year            Int
+  displayMode     String   @default("missing_only")
+  totalCardsCount Int      @default(0)
+  imageUrl        String?
+  slug            String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  cards Card[]
+}
+
+model Card {
+  id        String     @id @default(cuid())
+  seriesId  String
+  series    CardSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  number    String
+  name      String
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  variants CardVariant[]
+
+  @@unique([seriesId, number])
+}
+
+model CardVariant {
+  id          String   @id @default(cuid())
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  variantName String
+  limitNumber Int?
+  isOwned     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([cardId, variantName])
+}

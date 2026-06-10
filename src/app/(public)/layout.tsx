@@ -23,6 +23,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               Účastníci
             </Link>
             <Link
+              href="/kartickar"
+              className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
+            >
+              Kartičky
+            </Link>
+            <Link
               href="/spurs"
               className="flex items-center gap-1.5 text-[#8e8e93] hover:text-[#132257] text-sm transition-colors"
             >
