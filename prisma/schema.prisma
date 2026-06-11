@@ -8,13 +8,25 @@ datasource db {
 }
 
 model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String
+  name        String
+  role        String   @default("admin")
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
   id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  name      String
-  role      String   @default("admin")
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Trip {
@@ -121,19 +133,22 @@ model MatchPhoto {
 }
 
 model CardSeries {
-  id              String   @id @default(cuid())
-  name            String
-  year            Int
-  sport           String   @default("football")
-  tier            String   @default("regular")
-  displayMode     String   @default("missing_only")
-  totalCardsCount Int      @default(0)
-  imageUrl        String?
-  slug            String   @unique
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  year             Int
+  sport            String   @default("football")
+  tier             String   @default("regular")
+  displayMode      String   @default("missing_only")
+  totalCardsCount  Int      @default(0)
+  imageUrl         String?
+  pricePerCard     Float?
+  isPricingEnabled Boolean  @default(false)
+  slug             String   @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   cards Card[]
+  tags  CardTag[]
 }
 
 model Card {
@@ -143,11 +158,23 @@ model Card {
   number    String
   name      String
   order     Int        @default(0)
+  imageUrl  String?
   createdAt DateTime   @default(now())
 
   variants CardVariant[]
 
   @@unique([seriesId, number])
+}
+
+model CardTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#007aff")
+  symbol    String   @default("🏷️")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  series CardSeries[]
 }
 
 model CardVariant {

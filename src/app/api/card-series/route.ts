@@ -7,9 +7,8 @@ export async function GET() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
     include: {
-      cards: {
-        include: { variants: { select: { isOwned: true } } },
-      },
+      cards: { include: { variants: { select: { isOwned: true } } } },
+      tags: true,
     },
   })
   return NextResponse.json(series.map(serialize))
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
-  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl } = body
+  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, pricePerCard, isPricingEnabled, tagIds } = body
   if (!name || !year) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
   let slug = slugify(name + " " + year)
@@ -36,36 +35,30 @@ export async function POST(req: NextRequest) {
       displayMode: displayMode ?? "missing_only",
       totalCardsCount: Number(totalCardsCount) || 0,
       imageUrl: imageUrl || null,
+      pricePerCard: pricePerCard != null ? Number(pricePerCard) : null,
+      isPricingEnabled: !!isPricingEnabled,
       slug,
+      tags: tagIds?.length ? { connect: (tagIds as string[]).map((id) => ({ id })) } : undefined,
     },
-    include: { cards: { include: { variants: { select: { isOwned: true } } } } },
+    include: { cards: { include: { variants: { select: { isOwned: true } } } }, tags: true },
   })
   return NextResponse.json(serialize(series), { status: 201 })
 }
 
-function serialize(s: Parameters<typeof serializeRaw>[0]) {
-  return serializeRaw(s)
-}
-
-function serializeRaw(s: {
+function serialize(s: {
   id: string; name: string; year: number; sport: string; tier: string; displayMode: string
-  totalCardsCount: number; imageUrl: string | null; slug: string
-  createdAt: Date; updatedAt: Date
+  totalCardsCount: number; imageUrl: string | null; pricePerCard: number | null; isPricingEnabled: boolean
+  slug: string; createdAt: Date; updatedAt: Date
   cards: { variants: { isOwned: boolean }[] }[]
+  tags: { id: string; name: string; color: string; symbol: string; createdAt: Date; updatedAt: Date }[]
 }) {
   return {
-    id: s.id,
-    name: s.name,
-    year: s.year,
-    sport: s.sport,
-    tier: s.tier,
-    displayMode: s.displayMode,
-    totalCardsCount: s.totalCardsCount,
-    imageUrl: s.imageUrl,
-    slug: s.slug,
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
+    id: s.id, name: s.name, year: s.year, sport: s.sport, tier: s.tier, displayMode: s.displayMode,
+    totalCardsCount: s.totalCardsCount, imageUrl: s.imageUrl, slug: s.slug,
+    pricePerCard: s.pricePerCard, isPricingEnabled: s.isPricingEnabled,
+    createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString(),
     ownedVariantsCount: s.cards.flatMap((c) => c.variants).filter((v) => v.isOwned).length,
     totalVariantsCount: s.cards.flatMap((c) => c.variants).length,
+    tags: s.tags.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() })),
   }
 }

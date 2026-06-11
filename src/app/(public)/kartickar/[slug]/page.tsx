@@ -22,9 +22,8 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const series = await prisma.cardSeries.findUnique({
     where: { slug },
     include: {
-      cards: {
-        include: { variants: { orderBy: { variantName: "asc" } } },
-      },
+      cards: { include: { variants: { orderBy: { variantName: "asc" } } } },
+      tags: true,
     },
   })
   if (!series) notFound()
@@ -34,12 +33,20 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const pct = series.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / series.totalCardsCount) * 100)) : 0
   const lastChanged = seriesLastChanged(series.updatedAt, allVariants.map((v) => v.updatedAt))
 
+  const collectionValue = series.isPricingEnabled && series.pricePerCard != null
+    ? Math.round(ownedCount * series.pricePerCard)
+    : null
+  const maxValue = series.isPricingEnabled && series.pricePerCard != null
+    ? Math.round((series.totalCardsCount || allVariants.length) * series.pricePerCard)
+    : null
+
   const cards: Card[] = sortCards(series.cards).map((c) => ({
     id: c.id,
     seriesId: c.seriesId,
     number: c.number,
     name: c.name,
     order: c.order,
+    imageUrl: c.imageUrl,
     createdAt: c.createdAt.toISOString(),
     variants: c.variants.map((v) => ({
       id: v.id,
@@ -51,6 +58,8 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
       updatedAt: v.updatedAt.toISOString(),
     })),
   }))
+
+  const hasCardImages = cards.some((c) => c.imageUrl)
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -73,14 +82,30 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm text-[#8e8e93] mb-1">{series.year}</p>
-            <h1 className="text-2xl font-bold text-[#1d1d1f] mb-3">{series.name}</h1>
-            <p className="text-sm text-[#8e8e93] mb-2">
+            <h1 className="text-2xl font-bold text-[#1d1d1f] mb-2">{series.name}</h1>
+
+            {series.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {series.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white"
+                    style={{ backgroundColor: tag.color }}
+                  >
+                    {tag.symbol} {tag.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <p className="text-sm text-[#8e8e93] mb-1">
               {ownedCount} / {series.totalCardsCount > 0 ? series.totalCardsCount : allVariants.length} variant · {pct}% nasbíráno
             </p>
             <p className="text-xs text-[#c7c7cc] mb-2">
               Aktualizováno {relativeTime(lastChanged)}
             </p>
-            <div className="h-2.5 bg-[#e5e5ea] rounded-full overflow-hidden max-w-xs">
+
+            <div className="h-2.5 bg-[#e5e5ea] rounded-full overflow-hidden max-w-xs mb-3">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -89,6 +114,26 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
                 }}
               />
             </div>
+
+            {collectionValue != null && (
+              <div className="flex items-center gap-2 p-3 bg-[#f9f9fb] rounded-xl border border-[#e5e5ea] max-w-xs">
+                <svg className="w-4 h-4 text-[#34c759] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-xs text-[#8e8e93]">Hodnota sbírky</p>
+                  <p className="text-sm font-semibold text-[#1d1d1f]">
+                    {collectionValue.toLocaleString("cs-CZ")} Kč
+                    {maxValue != null && maxValue > 0 && (
+                      <span className="text-xs font-normal text-[#8e8e93] ml-1">
+                        / {maxValue.toLocaleString("cs-CZ")} Kč max
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -96,6 +141,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
       <CardChecklist
         cards={cards}
         displayMode={series.displayMode as "missing_only" | "full_collection"}
+        showImages={series.tier === "premium" && hasCardImages}
       />
     </div>
   )

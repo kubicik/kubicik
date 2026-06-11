@@ -3,10 +3,11 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function SignInPage() {
   const router = useRouter()
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -17,7 +18,7 @@ export default function SignInPage() {
     setError("")
 
     const result = await signIn("credentials", {
-      username,
+      email,
       password,
       redirect: false,
     })
@@ -25,7 +26,7 @@ export default function SignInPage() {
     setLoading(false)
 
     if (result?.error) {
-      setError("Nesprávné uživatelské jméno nebo heslo")
+      setError("Nesprávný email nebo heslo")
     } else {
       router.push("/admin")
       router.refresh()
@@ -55,24 +56,20 @@ export default function SignInPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">
-                Uživatelské jméno
-              </label>
+              <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Email</label>
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="username"
+                autoComplete="email"
                 className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
-                placeholder="admin"
+                placeholder="admin@kubicik.cz"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">
-                Heslo
-              </label>
+              <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Heslo</label>
               <input
                 type="password"
                 value={password}
@@ -92,6 +89,12 @@ export default function SignInPage() {
               {loading ? "Přihlašování..." : "Přihlásit se"}
             </button>
           </form>
+
+          <div className="px-6 pb-5 text-center">
+            <Link href="/auth/forgot-password" className="text-sm text-[#007aff] hover:underline">
+              Zapomenuté heslo?
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -85,8 +85,18 @@ export interface Card {
   number: string
   name: string
   order: number
+  imageUrl: string | null
   createdAt: string
   variants?: CardVariant[]
+}
+
+export interface CardTag {
+  id: string
+  name: string
+  color: string
+  symbol: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CardSeries {
@@ -98,10 +108,13 @@ export interface CardSeries {
   displayMode: "missing_only" | "full_collection"
   totalCardsCount: number
   imageUrl: string | null
+  pricePerCard: number | null
+  isPricingEnabled: boolean
   slug: string
   createdAt: string
   updatedAt: string
   cards?: Card[]
+  tags?: CardTag[]
 }
 
 export interface Trip {

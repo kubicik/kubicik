@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { compressImage } from "@/lib/compressImage"
-import type { CardSeries } from "@/types"
+import type { CardSeries, CardTag } from "@/types"
 
 interface Props {
   initial?: CardSeries
@@ -20,9 +20,20 @@ export default function CardSeriesForm({ initial }: Props) {
   const [displayMode, setDisplayMode] = useState<"missing_only" | "full_collection">(initial?.displayMode ?? "missing_only")
   const [totalCardsCount, setTotalCardsCount] = useState(initial?.totalCardsCount?.toString() ?? "0")
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "")
+  const [isPricingEnabled, setIsPricingEnabled] = useState(initial?.isPricingEnabled ?? false)
+  const [pricePerCard, setPricePerCard] = useState(initial?.pricePerCard?.toString() ?? "")
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initial?.tags?.map((t) => t.id) ?? [])
+  const [availableTags, setAvailableTags] = useState<CardTag[]>([])
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    fetch("/api/card-tags")
+      .then((r) => r.json())
+      .then(setAvailableTags)
+      .catch(() => {})
+  }, [])
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -57,6 +68,9 @@ export default function CardSeriesForm({ initial }: Props) {
         displayMode,
         totalCardsCount: Number(totalCardsCount),
         imageUrl: imageUrl || null,
+        isPricingEnabled,
+        pricePerCard: isPricingEnabled && pricePerCard ? Number(pricePerCard) : null,
+        tagIds: selectedTagIds,
       }
       const res = await fetch(isEdit ? `/api/card-series/${initial!.id}` : "/api/card-series", {
         method: isEdit ? "PUT" : "POST",
@@ -70,6 +84,10 @@ export default function CardSeriesForm({ initial }: Props) {
       setError(err instanceof Error ? err.message : "Chyba při ukládání")
       setSaving(false)
     }
+  }
+
+  function toggleTag(id: string) {
+    setSelectedTagIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
   }
 
   return (
@@ -185,6 +203,60 @@ export default function CardSeriesForm({ initial }: Props) {
             ? "Veřejně zobrazí pouze karty, které ještě nemáte."
             : "Veřejně zobrazí celý seznam — vlastněné karty budou označeny."}
         </p>
+      </div>
+
+      {availableTags.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-[#3c3c43] mb-2">Štítky</label>
+          <div className="flex flex-wrap gap-2">
+            {availableTags.map((tag) => {
+              const active = selectedTagIds.includes(tag.id)
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTag(tag.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    active ? "text-white border-transparent" : "text-[#3c3c43] border-[#e5e5ea] bg-white hover:bg-[#f2f2f7]"
+                  }`}
+                  style={active ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
+                >
+                  {tag.symbol} {tag.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-[#3c3c43]">Sledování ceny</label>
+          <button
+            type="button"
+            onClick={() => setIsPricingEnabled(!isPricingEnabled)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${isPricingEnabled ? "bg-[#34c759]" : "bg-[#e5e5ea]"}`}
+          >
+            <span
+              className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isPricingEnabled ? "translate-x-5" : "translate-x-0.5"}`}
+            />
+          </button>
+        </div>
+        {isPricingEnabled && (
+          <div>
+            <label className="block text-xs text-[#8e8e93] mb-1.5">Cena za kartu (Kč)</label>
+            <input
+              type="number"
+              value={pricePerCard}
+              onChange={(e) => setPricePerCard(e.target.value)}
+              min="0"
+              step="0.01"
+              placeholder="0"
+              className="w-48 px-3.5 py-2.5 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+            />
+            <p className="mt-1 text-xs text-[#8e8e93]">Hodnota sbírky = počet vlastněných karet × cena</p>
+          </div>
+        )}
       </div>
 
       <div>

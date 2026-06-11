@@ -15,9 +15,8 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     series = await prisma.cardSeries.findUnique({
       where: { id },
       include: {
-        cards: {
-          include: { variants: { orderBy: { variantName: "asc" } } },
-        },
+        cards: { include: { variants: { orderBy: { variantName: "asc" } } } },
+        tags: true,
       },
     })
   } catch (err) {
@@ -35,9 +34,15 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     displayMode: series.displayMode as "missing_only" | "full_collection",
     totalCardsCount: series.totalCardsCount,
     imageUrl: series.imageUrl,
+    pricePerCard: series.pricePerCard,
+    isPricingEnabled: series.isPricingEnabled,
     slug: series.slug,
     createdAt: series.createdAt.toISOString(),
     updatedAt: series.updatedAt.toISOString(),
+    tags: series.tags.map((t) => ({
+      id: t.id, name: t.name, color: t.color, symbol: t.symbol,
+      createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString(),
+    })),
   }
 
   const cards: Card[] = sortCards(series.cards).map((c) => ({
@@ -46,6 +51,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     number: c.number,
     name: c.name,
     order: c.order,
+    imageUrl: c.imageUrl,
     createdAt: c.createdAt.toISOString(),
     variants: c.variants.map((v) => ({
       id: v.id,

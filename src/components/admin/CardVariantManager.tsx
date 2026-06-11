@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { compressImage } from "@/lib/compressImage"
 import type { Card, CardVariant } from "@/types"
 
 interface Props {
@@ -13,6 +14,7 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
   const [cards, setCards] = useState<Card[]>(initialCards)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState("")
+  const [uploadingCardId, setUploadingCardId] = useState<string | null>(null)
 
   const [missingInput, setMissingInput] = useState("")
   const [bulkLoading, setBulkLoading] = useState(false)
@@ -23,10 +25,7 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
   const pct = totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / totalCardsCount) * 100)) : 0
 
   const parsedMissing = useMemo(() => {
-    return missingInput
-      .split(/[\s,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
+    return missingInput.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean)
   }, [missingInput])
 
   const missingSet = useMemo(() => new Set(parsedMissing), [parsedMissing])
@@ -52,10 +51,7 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
       setCards((prev) =>
         prev.map((c) => ({
           ...c,
-          variants: c.variants?.map((v) => ({
-            ...v,
-            isOwned: !missingSet.has(c.number),
-          })),
+          variants: c.variants?.map((v) => ({ ...v, isOwned: !missingSet.has(c.number) })),
         }))
       )
       setBulkResult({ owned: data.owned, missing: data.missing })
@@ -91,12 +87,41 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
         )
       )
     } finally {
-      setToggling((s) => {
-        const next = new Set(s)
-        next.delete(variant.id)
-        return next
-      })
+      setToggling((s) => { const next = new Set(s); next.delete(variant.id); return next })
     }
+  }
+
+  async function handleCardImageUpload(cardId: string, file: File) {
+    setUploadingCardId(cardId)
+    try {
+      const compressed = await compressImage(file, "cards")
+      const fd = new FormData()
+      fd.append("file", compressed)
+      fd.append("type", "cards")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Upload failed")
+
+      await fetch(`/api/cards/${cardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: data.url }),
+      })
+      setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, imageUrl: data.url } : c))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Chyba uploadu")
+    } finally {
+      setUploadingCardId(null)
+    }
+  }
+
+  async function removeCardImage(cardId: string) {
+    await fetch(`/api/cards/${cardId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: null }),
+    })
+    setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, imageUrl: null } : c))
   }
 
   const filtered = search.trim()
@@ -122,10 +147,7 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
       </div>
 
       <div className="h-2.5 bg-[#e5e5ea] rounded-full overflow-hidden">
-        <div
-          className="h-full bg-[#34c759] rounded-full transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
+        <div className="h-full bg-[#34c759] rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
 
       {cards.length > 0 && (
@@ -192,11 +214,59 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
         <div className="space-y-2 max-h-[600px] overflow-y-auto -mx-1 px-1">
           {filtered.map((card) => (
             <div key={card.id} className="border border-[#e5e5ea] rounded-xl p-3">
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-xs font-mono text-[#8e8e93] bg-[#f2f2f7] px-1.5 py-0.5 rounded-md">
-                  #{card.number}
-                </span>
-                <span className="text-sm font-medium text-[#1d1d1f]">{card.name}</span>
+              <div className="flex items-start gap-2 mb-2">
+                {card.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={card.imageUrl}
+                    alt={card.name}
+                    className="w-8 h-10 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1 flex items-baseline gap-2">
+                  <span className="text-xs font-mono text-[#8e8e93] bg-[#f2f2f7] px-1.5 py-0.5 rounded-md">
+                    #{card.number}
+                  </span>
+                  <span className="text-sm font-medium text-[#1d1d1f]">{card.name}</span>
+                </div>
+                <label
+                  className={`flex-shrink-0 p-1.5 rounded-lg cursor-pointer transition-colors ${
+                    uploadingCardId === card.id
+                      ? "opacity-50 pointer-events-none"
+                      : "text-[#8e8e93] hover:text-[#007aff] hover:bg-[#f0f6ff]"
+                  }`}
+                  title="Nahrát obrázek karty"
+                >
+                  {uploadingCardId === card.id ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCardImageUpload(card.id, f) }}
+                    disabled={uploadingCardId === card.id}
+                  />
+                </label>
+                {card.imageUrl && (
+                  <button
+                    onClick={() => removeCardImage(card.id)}
+                    className="flex-shrink-0 p-1.5 text-[#8e8e93] hover:text-[#ff3b30] hover:bg-[#fff2f0] rounded-lg transition-colors"
+                    title="Odebrat obrázek"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {card.variants?.map((variant) => (
@@ -220,9 +290,7 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
                       </svg>
                     )}
                     {variant.variantName}
-                    {variant.limitNumber != null && (
-                      <span className="opacity-70">/{variant.limitNumber}</span>
-                    )}
+                    {variant.limitNumber != null && <span className="opacity-70">/{variant.limitNumber}</span>}
                   </button>
                 ))}
               </div>

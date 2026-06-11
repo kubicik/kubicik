@@ -14,11 +14,16 @@ async function main() {
   if (!existing) {
     const hashed = await bcrypt.hash("admin", 12)
     await prisma.user.create({
-      data: { username: "admin", password: hashed, name: "Admin", role: "admin" },
+      data: { username: "admin", password: hashed, name: "Admin", role: "admin", email: "admin@kubicik.cz" },
     })
-    console.log("Admin user created (admin/admin)")
+    console.log("Admin user created (admin/admin) – email: admin@kubicik.cz")
   } else {
-    console.log("Admin user already exists")
+    if (!existing.email) {
+      await prisma.user.update({ where: { id: existing.id }, data: { email: "admin@kubicik.cz" } })
+      console.log("Admin email backfilled to admin@kubicik.cz")
+    } else {
+      console.log("Admin user already exists")
+    }
   }
 }
 

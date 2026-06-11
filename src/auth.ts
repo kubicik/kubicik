@@ -11,11 +11,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        username: { label: "Uživatelské jméno", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Heslo", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null
+        if (!credentials?.email || !credentials?.password) return null
 
         const url =
           process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "dev.db")}`
@@ -24,9 +24,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const db = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0])
 
         try {
-          const user = await db.user.findUnique({
-            where: { username: credentials.username as string },
-          })
+          const emailVal = (credentials.email as string).toLowerCase().trim()
+          // Find by email first, fall back to username for backward compatibility
+          const user =
+            (await db.user.findFirst({ where: { email: emailVal } })) ??
+            (await db.user.findUnique({ where: { username: emailVal } }))
           if (!user) return null
 
           const valid = await bcrypt.compare(
@@ -35,7 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           )
           if (!valid) return null
 
-          return { id: user.id, name: user.name, email: user.username }
+          return { id: user.id, name: user.name, email: user.email ?? user.username }
         } finally {
           await db.$disconnect()
         }
