@@ -1,0 +1,1 @@
+ALTER TABLE "CardSeries" ADD COLUMN "tier" TEXT NOT NULL DEFAULT 'regular';

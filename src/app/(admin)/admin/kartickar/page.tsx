@@ -54,9 +54,14 @@ export default async function AdminKartickarPage() {
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-medium text-[#1d1d1f] truncate">{s.name}</span>
                     <span className="text-xs text-[#8e8e93] flex-shrink-0">{s.year}</span>
+                    {s.tier === "premium" && (
+                      <span className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-md bg-[#fff8e6] text-[#ff9f0a] border border-[#ff9f0a]/20">
+                        ⭐ Prémiová
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-[#8e8e93] mb-1.5">
                     {ownedCount} / {s.totalCardsCount > 0 ? s.totalCardsCount : "?"} · {pct}% ·{" "}

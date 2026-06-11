@@ -39,13 +39,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, year, displayMode, totalCardsCount, imageUrl } = body
+  const { name, year, tier, displayMode, totalCardsCount, imageUrl } = body
 
   const series = await prisma.cardSeries.update({
     where: { id },
     data: {
       name: name ?? undefined,
       year: year != null ? Number(year) : undefined,
+      tier: tier ?? undefined,
       displayMode: displayMode ?? undefined,
       totalCardsCount: totalCardsCount != null ? Number(totalCardsCount) : undefined,
       imageUrl: imageUrl !== undefined ? (imageUrl || null) : undefined,

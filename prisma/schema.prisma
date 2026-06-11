@@ -124,6 +124,7 @@ model CardSeries {
   id              String   @id @default(cuid())
   name            String
   year            Int
+  tier            String   @default("regular")
   displayMode     String   @default("missing_only")
   totalCardsCount Int      @default(0)
   imageUrl        String?

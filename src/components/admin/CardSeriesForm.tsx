@@ -15,6 +15,7 @@ export default function CardSeriesForm({ initial }: Props) {
 
   const [name, setName] = useState(initial?.name ?? "")
   const [year, setYear] = useState(initial?.year?.toString() ?? new Date().getFullYear().toString())
+  const [tier, setTier] = useState<"premium" | "regular">(initial?.tier ?? "regular")
   const [displayMode, setDisplayMode] = useState<"missing_only" | "full_collection">(initial?.displayMode ?? "missing_only")
   const [totalCardsCount, setTotalCardsCount] = useState(initial?.totalCardsCount?.toString() ?? "0")
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "")
@@ -50,6 +51,7 @@ export default function CardSeriesForm({ initial }: Props) {
       const payload = {
         name: name.trim(),
         year: Number(year),
+        tier,
         displayMode,
         totalCardsCount: Number(totalCardsCount),
         imageUrl: imageUrl || null,
@@ -109,6 +111,28 @@ export default function CardSeriesForm({ initial }: Props) {
             min="0"
             className="w-full px-3.5 py-2.5 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
           />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#3c3c43] mb-2">Kategorie sbírky</label>
+        <div className="flex gap-3">
+          {(["regular", "premium"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTier(t)}
+              className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                tier === t
+                  ? t === "premium"
+                    ? "bg-[#ff9f0a] text-white border-[#ff9f0a]"
+                    : "bg-[#007aff] text-white border-[#007aff]"
+                  : "bg-white text-[#3c3c43] border-[#e5e5ea] hover:bg-[#f2f2f7]"
+              }`}
+            >
+              {t === "premium" ? "⭐ Prémiová" : "Řadová"}
+            </button>
+          ))}
         </div>
       </div>
 
