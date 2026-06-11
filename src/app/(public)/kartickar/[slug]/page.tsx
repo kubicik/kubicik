@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import CardChecklist from "@/components/public/CardChecklist"
 import { sortCards } from "@/lib/sortCards"
+import { relativeTime, seriesLastChanged } from "@/lib/relativeTime"
 import type { Card } from "@/types"
 
 export const revalidate = 60
@@ -31,6 +32,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const allVariants = series.cards.flatMap((c) => c.variants)
   const ownedCount = allVariants.filter((v) => v.isOwned).length
   const pct = series.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / series.totalCardsCount) * 100)) : 0
+  const lastChanged = seriesLastChanged(series.updatedAt, allVariants.map((v) => v.updatedAt))
 
   const cards: Card[] = sortCards(series.cards).map((c) => ({
     id: c.id,
@@ -74,6 +76,9 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
             <h1 className="text-2xl font-bold text-[#1d1d1f] mb-3">{series.name}</h1>
             <p className="text-sm text-[#8e8e93] mb-2">
               {ownedCount} / {series.totalCardsCount > 0 ? series.totalCardsCount : allVariants.length} variant · {pct}% nasbíráno
+            </p>
+            <p className="text-xs text-[#c7c7cc] mb-2">
+              Aktualizováno {relativeTime(lastChanged)}
             </p>
             <div className="h-2.5 bg-[#e5e5ea] rounded-full overflow-hidden max-w-xs">
               <div

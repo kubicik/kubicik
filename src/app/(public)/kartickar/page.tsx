@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
+import { relativeTime, seriesLastChanged } from "@/lib/relativeTime"
 
 export const revalidate = 60
 
 type Series = {
   id: string; name: string; year: number; slug: string
   sport: string; tier: string; imageUrl: string | null
-  totalCardsCount: number; cards: { variants: { isOwned: boolean }[] }[]
+  updatedAt: Date; totalCardsCount: number
+  cards: { variants: { isOwned: boolean; updatedAt: Date }[] }[]
 }
 
 const SPORTS = [
@@ -15,9 +17,11 @@ const SPORTS = [
   { value: "basketball", label: "🏀 Basketbal" },
 ] as const
 
-function SeriesCard({ s }: { s: Series }) {
-  const ownedCount = s.cards.flatMap((c) => c.variants).filter((v) => v.isOwned).length
+function SeriesCard({ s, now }: { s: Series; now: Date }) {
+  const allVariants = s.cards.flatMap((c) => c.variants)
+  const ownedCount = allVariants.filter((v) => v.isOwned).length
   const pct = s.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / s.totalCardsCount) * 100)) : 0
+  const lastChanged = seriesLastChanged(s.updatedAt, allVariants.map((v) => v.updatedAt))
 
   return (
     <Link
@@ -55,7 +59,10 @@ function SeriesCard({ s }: { s: Series }) {
             style={{ width: `${pct}%`, backgroundColor: pct === 100 ? "#34c759" : pct > 50 ? "#007aff" : "#ff9f0a" }}
           />
         </div>
-        <p className="text-xs font-medium text-[#3c3c43] mt-1">{pct}% nasbíráno</p>
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-xs font-medium text-[#3c3c43]">{pct}% nasbíráno</p>
+          <p className="text-xs text-[#c7c7cc]">{relativeTime(lastChanged, now)}</p>
+        </div>
       </div>
     </Link>
   )
@@ -64,9 +71,10 @@ function SeriesCard({ s }: { s: Series }) {
 export default async function KartickarPage() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
-    include: { cards: { include: { variants: { select: { isOwned: true } } } } },
+    include: { cards: { include: { variants: { select: { isOwned: true, updatedAt: true } } } } },
   })
 
+  const now = new Date()
   const bySport = SPORTS.map((sport) => ({
     ...sport,
     premium: series.filter((s) => s.sport === sport.value && s.tier === "premium"),
@@ -114,7 +122,7 @@ export default async function KartickarPage() {
                         </p>
                       )}
                       <div className="space-y-4">
-                        {group.premium.map((s) => <SeriesCard key={s.id} s={s} />)}
+                        {group.premium.map((s) => <SeriesCard key={s.id} s={s} now={now} />)}
                       </div>
                     </div>
                   )}
@@ -126,7 +134,7 @@ export default async function KartickarPage() {
                         </p>
                       )}
                       <div className="space-y-4">
-                        {group.regular.map((s) => <SeriesCard key={s.id} s={s} />)}
+                        {group.regular.map((s) => <SeriesCard key={s.id} s={s} now={now} />)}
                       </div>
                     </div>
                   )}
