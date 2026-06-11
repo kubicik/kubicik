@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
-  const { name, year, tier, displayMode, totalCardsCount, imageUrl } = body
+  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl } = body
   if (!name || !year) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
   let slug = slugify(name + " " + year)
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     data: {
       name,
       year: Number(year),
+      sport: sport ?? "football",
       tier: tier ?? "regular",
       displayMode: displayMode ?? "missing_only",
       totalCardsCount: Number(totalCardsCount) || 0,
@@ -47,7 +48,7 @@ function serialize(s: Parameters<typeof serializeRaw>[0]) {
 }
 
 function serializeRaw(s: {
-  id: string; name: string; year: number; tier: string; displayMode: string
+  id: string; name: string; year: number; sport: string; tier: string; displayMode: string
   totalCardsCount: number; imageUrl: string | null; slug: string
   createdAt: Date; updatedAt: Date
   cards: { variants: { isOwned: boolean }[] }[]
@@ -56,6 +57,7 @@ function serializeRaw(s: {
     id: s.id,
     name: s.name,
     year: s.year,
+    sport: s.sport,
     tier: s.tier,
     displayMode: s.displayMode,
     totalCardsCount: s.totalCardsCount,

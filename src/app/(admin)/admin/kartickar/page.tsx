@@ -55,6 +55,9 @@ export default async function AdminKartickarPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
+                    <span className="flex-shrink-0 text-base leading-none">
+                      {s.sport === "hockey" ? "🏒" : s.sport === "basketball" ? "🏀" : "⚽"}
+                    </span>
                     <span className="font-medium text-[#1d1d1f] truncate">{s.name}</span>
                     <span className="text-xs text-[#8e8e93] flex-shrink-0">{s.year}</span>
                     {s.tier === "premium" && (

@@ -93,6 +93,7 @@ export interface CardSeries {
   id: string
   name: string
   year: number
+  sport: "football" | "hockey" | "basketball"
   tier: "premium" | "regular"
   displayMode: "missing_only" | "full_collection"
   totalCardsCount: number

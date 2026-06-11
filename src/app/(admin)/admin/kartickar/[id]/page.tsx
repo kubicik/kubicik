@@ -30,6 +30,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     id: series.id,
     name: series.name,
     year: series.year,
+    sport: series.sport as "football" | "hockey" | "basketball",
     tier: series.tier as "premium" | "regular",
     displayMode: series.displayMode as "missing_only" | "full_collection",
     totalCardsCount: series.totalCardsCount,

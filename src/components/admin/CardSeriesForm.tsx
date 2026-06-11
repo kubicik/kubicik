@@ -15,6 +15,7 @@ export default function CardSeriesForm({ initial }: Props) {
 
   const [name, setName] = useState(initial?.name ?? "")
   const [year, setYear] = useState(initial?.year?.toString() ?? new Date().getFullYear().toString())
+  const [sport, setSport] = useState<"football" | "hockey" | "basketball">(initial?.sport ?? "football")
   const [tier, setTier] = useState<"premium" | "regular">(initial?.tier ?? "regular")
   const [displayMode, setDisplayMode] = useState<"missing_only" | "full_collection">(initial?.displayMode ?? "missing_only")
   const [totalCardsCount, setTotalCardsCount] = useState(initial?.totalCardsCount?.toString() ?? "0")
@@ -51,6 +52,7 @@ export default function CardSeriesForm({ initial }: Props) {
       const payload = {
         name: name.trim(),
         year: Number(year),
+        sport,
         tier,
         displayMode,
         totalCardsCount: Number(totalCardsCount),
@@ -111,6 +113,30 @@ export default function CardSeriesForm({ initial }: Props) {
             min="0"
             className="w-full px-3.5 py-2.5 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
           />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-[#3c3c43] mb-2">Sport</label>
+        <div className="flex gap-3">
+          {([
+            { value: "football", label: "⚽ Fotbal" },
+            { value: "hockey",   label: "🏒 Hokej" },
+            { value: "basketball", label: "🏀 Basketbal" },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSport(value)}
+              className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                sport === value
+                  ? "bg-[#007aff] text-white border-[#007aff]"
+                  : "bg-white text-[#3c3c43] border-[#e5e5ea] hover:bg-[#f2f2f7]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 

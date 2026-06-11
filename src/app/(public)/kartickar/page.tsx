@@ -3,12 +3,19 @@ import Link from "next/link"
 
 export const revalidate = 60
 
-function SeriesCard({ s }: {
-  s: {
-    id: string; name: string; year: number; slug: string; imageUrl: string | null
-    totalCardsCount: number; cards: { variants: { isOwned: boolean }[] }[]
-  }
-}) {
+type Series = {
+  id: string; name: string; year: number; slug: string
+  sport: string; tier: string; imageUrl: string | null
+  totalCardsCount: number; cards: { variants: { isOwned: boolean }[] }[]
+}
+
+const SPORTS = [
+  { value: "football",   label: "⚽ Fotbal" },
+  { value: "hockey",     label: "🏒 Hokej" },
+  { value: "basketball", label: "🏀 Basketbal" },
+] as const
+
+function SeriesCard({ s }: { s: Series }) {
   const ownedCount = s.cards.flatMap((c) => c.variants).filter((v) => v.isOwned).length
   const pct = s.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / s.totalCardsCount) * 100)) : 0
 
@@ -19,11 +26,7 @@ function SeriesCard({ s }: {
     >
       {s.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={s.imageUrl}
-          alt={s.name}
-          className="w-14 h-20 object-cover rounded-xl flex-shrink-0 border border-[#e5e5ea]"
-        />
+        <img src={s.imageUrl} alt={s.name} className="w-14 h-20 object-cover rounded-xl flex-shrink-0 border border-[#e5e5ea]" />
       ) : (
         <div className="w-14 h-20 rounded-xl bg-[#f2f2f7] flex items-center justify-center flex-shrink-0 border border-[#e5e5ea]">
           <svg className="w-6 h-6 text-[#c7c7cc]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -35,21 +38,21 @@ function SeriesCard({ s }: {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2 mb-0.5">
-          <h2 className="font-semibold text-[#1d1d1f] group-hover:text-[#007aff] transition-colors truncate">
+          <h3 className="font-semibold text-[#1d1d1f] group-hover:text-[#007aff] transition-colors truncate">
             {s.name}
-          </h2>
+          </h3>
           <span className="text-xs text-[#8e8e93] flex-shrink-0">{s.year}</span>
         </div>
+        {s.tier === "premium" && (
+          <p className="text-xs text-[#ff9f0a] mb-1">⭐ Prémiová</p>
+        )}
         <p className="text-xs text-[#8e8e93] mb-2">
           {ownedCount} / {s.totalCardsCount > 0 ? s.totalCardsCount : "?"} variant
         </p>
         <div className="h-2 bg-[#e5e5ea] rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all"
-            style={{
-              width: `${pct}%`,
-              backgroundColor: pct === 100 ? "#34c759" : pct > 50 ? "#007aff" : "#ff9f0a",
-            }}
+            style={{ width: `${pct}%`, backgroundColor: pct === 100 ? "#34c759" : pct > 50 ? "#007aff" : "#ff9f0a" }}
           />
         </div>
         <p className="text-xs font-medium text-[#3c3c43] mt-1">{pct}% nasbíráno</p>
@@ -61,16 +64,16 @@ function SeriesCard({ s }: {
 export default async function KartickarPage() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
-    include: {
-      cards: {
-        include: { variants: { select: { isOwned: true } } },
-      },
-    },
+    include: { cards: { include: { variants: { select: { isOwned: true } } } } },
   })
 
-  const premium = series.filter((s) => s.tier === "premium")
-  const regular = series.filter((s) => s.tier !== "premium")
-  const hasBoth = premium.length > 0 && regular.length > 0
+  const bySport = SPORTS.map((sport) => ({
+    ...sport,
+    premium: series.filter((s) => s.sport === sport.value && s.tier === "premium"),
+    regular:  series.filter((s) => s.sport === sport.value && s.tier !== "premium"),
+  })).filter((g) => g.premium.length + g.regular.length > 0)
+
+  const multipleSports = bySport.length > 1
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -93,31 +96,44 @@ export default async function KartickarPage() {
         <div className="text-center py-20 text-[#8e8e93]">Žádné série zatím nebyly přidány.</div>
       ) : (
         <div className="space-y-10">
-          {premium.length > 0 && (
-            <section>
-              {hasBoth && (
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-[#ff9f0a] mb-4">
-                  ⭐ Prémiové sbírky
-                </h2>
-              )}
-              <div className="space-y-4">
-                {premium.map((s) => <SeriesCard key={s.id} s={s} />)}
-              </div>
-            </section>
-          )}
-
-          {regular.length > 0 && (
-            <section>
-              {hasBoth && (
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-[#8e8e93] mb-4">
-                  Řadové sbírky
-                </h2>
-              )}
-              <div className="space-y-4">
-                {regular.map((s) => <SeriesCard key={s.id} s={s} />)}
-              </div>
-            </section>
-          )}
+          {bySport.map((group) => {
+            const hasBothTiers = group.premium.length > 0 && group.regular.length > 0
+            return (
+              <section key={group.value}>
+                {multipleSports && (
+                  <h2 className="text-sm font-bold text-[#1d1d1f] mb-4 pb-2 border-b border-[#e5e5ea]">
+                    {group.label}
+                  </h2>
+                )}
+                <div className="space-y-8">
+                  {group.premium.length > 0 && (
+                    <div>
+                      {hasBothTiers && (
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#ff9f0a] mb-3">
+                          ⭐ Prémiové
+                        </p>
+                      )}
+                      <div className="space-y-4">
+                        {group.premium.map((s) => <SeriesCard key={s.id} s={s} />)}
+                      </div>
+                    </div>
+                  )}
+                  {group.regular.length > 0 && (
+                    <div>
+                      {hasBothTiers && (
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#8e8e93] mb-3">
+                          Řadové
+                        </p>
+                      )}
+                      <div className="space-y-4">
+                        {group.regular.map((s) => <SeriesCard key={s.id} s={s} />)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )
+          })}
         </div>
       )}
     </div>
