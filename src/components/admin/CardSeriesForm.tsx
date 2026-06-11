@@ -26,6 +26,8 @@ export default function CardSeriesForm({ initial }: Props) {
   const [availableTags, setAvailableTags] = useState<CardTag[]>([])
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveStep, setSaveStep] = useState<"idle" | "sending" | "done">("idle")
+  const [slowWarning, setSlowWarning] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -59,7 +61,15 @@ export default function CardSeriesForm({ initial }: Props) {
     e.preventDefault()
     setError("")
     setSaving(true)
+    setSaveStep("sending")
+    setSlowWarning(false)
+
+    const slowTimer = setTimeout(() => setSlowWarning(true), 4000)
+
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 20000)
+
       const payload = {
         name: name.trim(),
         year: Number(year),
@@ -76,13 +86,26 @@ export default function CardSeriesForm({ initial }: Props) {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Chyba při ukládání")
-      router.push(isEdit ? `/admin/kartickar/${initial!.id}` : `/admin/kartickar/${data.id}`)
+
+      setSaveStep("done")
+      setTimeout(() => {
+        router.push(isEdit ? `/admin/kartickar/${initial!.id}` : `/admin/kartickar/${data.id}`)
+      }, 500)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Chyba při ukládání")
+      const msg = err instanceof Error
+        ? (err.name === "AbortError" ? "Požadavek vypršel — zkuste to znovu" : err.message)
+        : "Chyba při ukládání"
+      setError(msg)
       setSaving(false)
+      setSaveStep("idle")
+    } finally {
+      clearTimeout(slowTimer)
+      setSlowWarning(false)
     }
   }
 
@@ -277,13 +300,37 @@ export default function CardSeriesForm({ initial }: Props) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-3 min-h-[20px]">
+          {saving && saveStep === "sending" && (
+            <div className="flex items-center gap-2 text-sm text-[#8e8e93]">
+              <svg className="w-4 h-4 animate-spin text-[#007aff]" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              {slowWarning ? "Ukládám, připojení je pomalé…" : "Ukládám…"}
+            </div>
+          )}
+          {saveStep === "done" && (
+            <div className="flex items-center gap-2 text-sm text-[#34c759]">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              Uloženo
+            </div>
+          )}
+        </div>
+
         <button
           type="submit"
           disabled={saving || uploading}
-          className="px-6 py-2.5 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] disabled:opacity-50 transition-colors"
+          className={`px-6 py-2.5 text-sm font-medium rounded-xl transition-all disabled:cursor-not-allowed ${
+            saveStep === "done"
+              ? "bg-[#34c759] text-white"
+              : "bg-[#007aff] text-white hover:bg-[#0066d6] disabled:opacity-50"
+          }`}
         >
-          {saving ? "Ukládám..." : isEdit ? "Uložit změny" : "Vytvořit sérii"}
+          {saveStep === "done" ? "✓ Uloženo" : saving ? "Ukládám…" : isEdit ? "Uložit změny" : "Vytvořit sérii"}
         </button>
       </div>
     </form>
