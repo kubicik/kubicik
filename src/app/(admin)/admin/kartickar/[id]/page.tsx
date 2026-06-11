@@ -84,7 +84,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
       <div className="space-y-6">
         <CardSeriesForm initial={seriesData} />
         <CardSeriesImport seriesId={series.id} />
-        <CardVariantManager initialCards={cards} totalCardsCount={series.totalCardsCount} />
+        <CardVariantManager seriesId={series.id} initialCards={cards} totalCardsCount={series.totalCardsCount} />
       </div>
     </div>
   )

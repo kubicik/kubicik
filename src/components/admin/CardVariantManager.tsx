@@ -1,21 +1,69 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { Card, CardVariant } from "@/types"
 
 interface Props {
+  seriesId: string
   initialCards: Card[]
   totalCardsCount: number
 }
 
-export default function CardVariantManager({ initialCards, totalCardsCount }: Props) {
+export default function CardVariantManager({ seriesId, initialCards, totalCardsCount }: Props) {
   const [cards, setCards] = useState<Card[]>(initialCards)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState("")
 
+  const [missingInput, setMissingInput] = useState("")
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkResult, setBulkResult] = useState<{ owned: number; missing: number } | null>(null)
+
   const ownedCount = cards.flatMap((c) => c.variants ?? []).filter((v) => v.isOwned).length
   const totalVariants = cards.flatMap((c) => c.variants ?? []).length
   const pct = totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / totalCardsCount) * 100)) : 0
+
+  const parsedMissing = useMemo(() => {
+    return missingInput
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }, [missingInput])
+
+  const missingSet = useMemo(() => new Set(parsedMissing), [parsedMissing])
+
+  const bulkPreview = useMemo(() => {
+    if (!parsedMissing.length || !cards.length) return null
+    const missingCards = cards.filter((c) => missingSet.has(c.number)).length
+    const ownedCards = cards.length - missingCards
+    return { ownedCards, missingCards }
+  }, [parsedMissing, missingSet, cards])
+
+  async function applyBulkOwn() {
+    setBulkLoading(true)
+    setBulkResult(null)
+    try {
+      const res = await fetch(`/api/card-series/${seriesId}/bulk-own`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ missingNumbers: parsedMissing }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setCards((prev) =>
+        prev.map((c) => ({
+          ...c,
+          variants: c.variants?.map((v) => ({
+            ...v,
+            isOwned: !missingSet.has(c.number),
+          })),
+        }))
+      )
+      setBulkResult({ owned: data.owned, missing: data.missing })
+      setMissingInput("")
+    } finally {
+      setBulkLoading(false)
+    }
+  }
 
   async function toggleVariant(cardId: string, variant: CardVariant) {
     if (toggling.has(variant.id)) return
@@ -25,12 +73,7 @@ export default function CardVariantManager({ initialCards, totalCardsCount }: Pr
       prev.map((c) =>
         c.id !== cardId
           ? c
-          : {
-              ...c,
-              variants: c.variants?.map((v) =>
-                v.id === variant.id ? { ...v, isOwned: newOwned } : v
-              ),
-            }
+          : { ...c, variants: c.variants?.map((v) => (v.id === variant.id ? { ...v, isOwned: newOwned } : v)) }
       )
     )
     try {
@@ -44,12 +87,7 @@ export default function CardVariantManager({ initialCards, totalCardsCount }: Pr
         prev.map((c) =>
           c.id !== cardId
             ? c
-            : {
-                ...c,
-                variants: c.variants?.map((v) =>
-                  v.id === variant.id ? { ...v, isOwned: variant.isOwned } : v
-                ),
-              }
+            : { ...c, variants: c.variants?.map((v) => (v.id === variant.id ? { ...v, isOwned: variant.isOwned } : v)) }
         )
       )
     } finally {
@@ -89,6 +127,52 @@ export default function CardVariantManager({ initialCards, totalCardsCount }: Pr
           style={{ width: `${pct}%` }}
         />
       </div>
+
+      {cards.length > 0 && (
+        <div className="border border-[#e5e5ea] rounded-xl p-4 space-y-3 bg-[#f9f9fb]">
+          <div>
+            <label className="block text-sm font-medium text-[#1d1d1f] mb-0.5">
+              Čísla chybějících karet
+            </label>
+            <p className="text-xs text-[#8e8e93] mb-2">
+              Zadejte čísla karet, které <strong>nemáte</strong> — všechny ostatní se označí jako vlastněné.
+            </p>
+            <input
+              type="text"
+              value={missingInput}
+              onChange={(e) => { setMissingInput(e.target.value); setBulkResult(null) }}
+              placeholder="5, 23, 47, 150, G-12"
+              className="w-full px-3.5 py-2 text-sm font-mono border border-[#e5e5ea] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+            />
+          </div>
+
+          {bulkPreview && (
+            <p className="text-xs text-[#3c3c43]">
+              <span className="text-[#34c759] font-medium">{bulkPreview.ownedCards} karet</span> se označí jako vlastněné,{" "}
+              <span className="text-[#ff3b30] font-medium">{bulkPreview.missingCards} karet</span> jako chybějící
+              {parsedMissing.filter((n) => !cards.some((c) => c.number === n)).length > 0 && (
+                <span className="text-[#ff9f0a]">
+                  {" "}(neznámá čísla: {parsedMissing.filter((n) => !cards.some((c) => c.number === n)).join(", ")})
+                </span>
+              )}
+            </p>
+          )}
+
+          {bulkResult && (
+            <p className="text-xs text-[#34c759]">
+              Hotovo — {bulkResult.owned} variant označeno jako vlastněné, {bulkResult.missing} jako chybějící.
+            </p>
+          )}
+
+          <button
+            onClick={applyBulkOwn}
+            disabled={bulkLoading || parsedMissing.length === 0}
+            className="px-4 py-2 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] disabled:opacity-40 transition-colors"
+          >
+            {bulkLoading ? "Ukládám..." : "Použít"}
+          </button>
+        </div>
+      )}
 
       {cards.length > 0 && (
         <input
