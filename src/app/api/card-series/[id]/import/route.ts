@@ -31,52 +31,72 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Invalid JSON — expected array of cards" }, { status: 400 })
   }
 
-  let created = 0
-  let updated = 0
-  let variantsAdded = 0
+  const validCards = cards.filter((c) => c.number && c.name)
+  const total = validCards.length
+  const encoder = new TextEncoder()
 
-  for (const cardInput of cards) {
-    if (!cardInput.number || !cardInput.name) continue
-
-    const existingCard = await prisma.card.findUnique({
-      where: { seriesId_number: { seriesId, number: String(cardInput.number) } },
-    })
-
-    let cardId: string
-    if (existingCard) {
-      cardId = existingCard.id
-      await prisma.card.update({ where: { id: cardId }, data: { name: String(cardInput.name) } })
-      updated++
-    } else {
-      const newCard = await prisma.card.create({
-        data: {
-          seriesId,
-          number: String(cardInput.number),
-          name: String(cardInput.name),
-        },
-      })
-      cardId = newCard.id
-      created++
-    }
-
-    for (const v of cardInput.variants ?? []) {
-      if (!v.variant_name) continue
-      const existingVariant = await prisma.cardVariant.findUnique({
-        where: { cardId_variantName: { cardId, variantName: String(v.variant_name) } },
-      })
-      if (!existingVariant) {
-        await prisma.cardVariant.create({
-          data: {
-            cardId,
-            variantName: String(v.variant_name),
-            limitNumber: v.limit_number != null ? Number(v.limit_number) : null,
-            isOwned: false,
-          },
-        })
-        variantsAdded++
+  const stream = new ReadableStream({
+    async start(controller) {
+      function emit(data: object) {
+        controller.enqueue(encoder.encode(JSON.stringify(data) + "\n"))
       }
-    }
-  }
 
-  return NextResponse.json({ ok: true, created, updated, variantsAdded })
+      let created = 0
+      let updated = 0
+      let variantsAdded = 0
+
+      try {
+        for (let i = 0; i < validCards.length; i++) {
+          const cardInput = validCards[i]
+
+          const existingCard = await prisma.card.findUnique({
+            where: { seriesId_number: { seriesId, number: String(cardInput.number) } },
+          })
+
+          let cardId: string
+          if (existingCard) {
+            cardId = existingCard.id
+            await prisma.card.update({ where: { id: cardId }, data: { name: String(cardInput.name) } })
+            updated++
+          } else {
+            const newCard = await prisma.card.create({
+              data: { seriesId, number: String(cardInput.number), name: String(cardInput.name) },
+            })
+            cardId = newCard.id
+            created++
+          }
+
+          for (const v of cardInput.variants ?? []) {
+            if (!v.variant_name) continue
+            const existingVariant = await prisma.cardVariant.findUnique({
+              where: { cardId_variantName: { cardId, variantName: String(v.variant_name) } },
+            })
+            if (!existingVariant) {
+              await prisma.cardVariant.create({
+                data: {
+                  cardId,
+                  variantName: String(v.variant_name),
+                  limitNumber: v.limit_number != null ? Number(v.limit_number) : null,
+                  isOwned: false,
+                },
+              })
+              variantsAdded++
+            }
+          }
+
+          emit({ done: i + 1, total })
+        }
+
+        emit({ ok: true, created, updated, variantsAdded })
+      } catch (err) {
+        emit({ error: err instanceof Error ? err.message : "Import failed" })
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache" },
+  })
 }

@@ -26,9 +26,15 @@ interface ImportResult {
   variantsAdded: number
 }
 
+interface Progress {
+  done: number
+  total: number
+}
+
 export default function CardSeriesImport({ seriesId }: { seriesId: string }) {
   const [jsonInput, setJsonInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState<Progress | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
@@ -36,23 +42,57 @@ export default function CardSeriesImport({ seriesId }: { seriesId: string }) {
   async function handleImport() {
     setError("")
     setResult(null)
+    setProgress(null)
     setLoading(true)
+
+    let parsed: unknown
     try {
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(jsonInput.trim())
-      } catch {
-        throw new Error("Neplatný JSON. Zkontrolujte výstup z AI.")
-      }
+      parsed = JSON.parse(jsonInput.trim())
+    } catch {
+      setError("Neplatný JSON. Zkontrolujte výstup z AI.")
+      setLoading(false)
+      return
+    }
+
+    try {
       const res = await fetch(`/api/card-series/${seriesId}/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Chyba importu")
-      setResult(data)
-      setJsonInput("")
+
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? "Chyba importu")
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const msg = JSON.parse(line) as {
+            done?: number; total?: number
+            ok?: boolean; created?: number; updated?: number; variantsAdded?: number
+            error?: string
+          }
+          if (msg.error) throw new Error(msg.error)
+          if (msg.ok) {
+            setResult({ created: msg.created!, updated: msg.updated!, variantsAdded: msg.variantsAdded! })
+            setProgress(null)
+            setJsonInput("")
+          } else if (msg.total) {
+            setProgress({ done: msg.done!, total: msg.total })
+          }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chyba importu")
     } finally {
@@ -65,6 +105,8 @@ export default function CardSeriesImport({ seriesId }: { seriesId: string }) {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  const pct = progress ? Math.round((progress.done / progress.total) * 100) : 0
 
   return (
     <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-5">
@@ -108,12 +150,32 @@ export default function CardSeriesImport({ seriesId }: { seriesId: string }) {
         <label className="block text-sm font-medium text-[#3c3c43] mb-1.5">JSON výstup z AI</label>
         <textarea
           value={jsonInput}
-          onChange={(e) => setJsonInput(e.target.value)}
+          onChange={(e) => { setJsonInput(e.target.value); setResult(null) }}
+          disabled={loading}
           placeholder={'[\n  {\n    "number": "1",\n    "name": "Erling Haaland",\n    "variants": [{ "variant_name": "Base", "limit_number": null }]\n  }\n]'}
           rows={8}
-          className="w-full px-3.5 py-2.5 text-sm font-mono border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff] resize-y"
+          className="w-full px-3.5 py-2.5 text-sm font-mono border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff] resize-y disabled:opacity-50"
         />
       </div>
+
+      {loading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-[#3c3c43]">
+              {progress ? `Zpracováno ${progress.done} / ${progress.total} karet` : "Připravuji import…"}
+            </span>
+            {progress && (
+              <span className="font-semibold text-[#007aff] tabular-nums">{pct} %</span>
+            )}
+          </div>
+          <div className="h-2.5 bg-[#e5e5ea] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#007aff] rounded-full transition-all duration-200"
+              style={{ width: progress ? `${pct}%` : "0%" }}
+            />
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="px-4 py-3 bg-[#fff2f0] text-[#ff3b30] text-sm rounded-xl">{error}</div>
@@ -131,7 +193,7 @@ export default function CardSeriesImport({ seriesId }: { seriesId: string }) {
           disabled={loading || !jsonInput.trim()}
           className="px-6 py-2.5 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] disabled:opacity-50 transition-colors"
         >
-          {loading ? "Importuji..." : "Importovat karty"}
+          {loading ? "Importuji…" : "Importovat karty"}
         </button>
       </div>
     </div>
