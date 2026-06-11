@@ -45,6 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let cardId: string
     if (existingCard) {
       cardId = existingCard.id
+      await prisma.card.update({ where: { id: cardId }, data: { name: String(cardInput.name) } })
       updated++
     } else {
       const newCard = await prisma.card.create({

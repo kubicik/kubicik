@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import CardChecklist from "@/components/public/CardChecklist"
+import { sortCards } from "@/lib/sortCards"
 import type { Card } from "@/types"
 
 export const revalidate = 60
@@ -21,7 +22,6 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     where: { slug },
     include: {
       cards: {
-        orderBy: [{ order: "asc" }, { number: "asc" }],
         include: { variants: { orderBy: { variantName: "asc" } } },
       },
     },
@@ -32,7 +32,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const ownedCount = allVariants.filter((v) => v.isOwned).length
   const pct = series.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / series.totalCardsCount) * 100)) : 0
 
-  const cards: Card[] = series.cards.map((c) => ({
+  const cards: Card[] = sortCards(series.cards).map((c) => ({
     id: c.id,
     seriesId: c.seriesId,
     number: c.number,

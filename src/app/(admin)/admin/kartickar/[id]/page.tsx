@@ -4,6 +4,7 @@ import Link from "next/link"
 import CardSeriesForm from "@/components/admin/CardSeriesForm"
 import CardSeriesImport from "@/components/admin/CardSeriesImport"
 import CardVariantManager from "@/components/admin/CardVariantManager"
+import { sortCards } from "@/lib/sortCards"
 import type { CardSeries, Card } from "@/types"
 
 export default async function AdminCardSeriesDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +16,6 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
       where: { id },
       include: {
         cards: {
-          orderBy: [{ order: "asc" }, { number: "asc" }],
           include: { variants: { orderBy: { variantName: "asc" } } },
         },
       },
@@ -38,7 +38,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     updatedAt: series.updatedAt.toISOString(),
   }
 
-  const cards: Card[] = series.cards.map((c) => ({
+  const cards: Card[] = sortCards(series.cards).map((c) => ({
     id: c.id,
     seriesId: c.seriesId,
     number: c.number,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { sortCards } from "@/lib/sortCards"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -8,7 +9,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       cards: {
-        orderBy: [{ order: "asc" }, { number: "asc" }],
         include: {
           variants: { orderBy: { variantName: "asc" } },
         },
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ...series,
     createdAt: series.createdAt.toISOString(),
     updatedAt: series.updatedAt.toISOString(),
-    cards: series.cards.map((c) => ({
+    cards: sortCards(series.cards).map((c) => ({
       ...c,
       createdAt: c.createdAt.toISOString(),
       variants: c.variants.map((v) => ({
