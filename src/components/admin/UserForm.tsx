@@ -9,6 +9,7 @@ interface Props {
     username: string
     name: string
     role: string
+    email: string | null
   }
 }
 
@@ -19,6 +20,7 @@ export default function UserForm({ initial }: Props) {
 
   const [username, setUsername] = useState(initial?.username ?? "")
   const [name, setName] = useState(initial?.name ?? "")
+  const [email, setEmail] = useState(initial?.email ?? "")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState(initial?.role ?? "admin")
 
@@ -27,7 +29,7 @@ export default function UserForm({ initial }: Props) {
     setLoading(true)
     setError("")
 
-    const payload: Record<string, string> = { name, role }
+    const payload: Record<string, string> = { name, role, email }
     if (!initial) {
       payload.username = username
       payload.password = password
@@ -89,6 +91,17 @@ export default function UserForm({ initial }: Props) {
             onChange={(e) => setName(e.target.value)}
             required
             placeholder="Jan Novák"
+            className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-[#1d1d1f] mb-1.5">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="jan@example.cz"
             className="w-full px-4 py-2.5 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
           />
         </div>
