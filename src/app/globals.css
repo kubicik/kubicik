@@ -55,3 +55,9 @@ body {
 .leaflet-container {
   z-index: 1;
 }
+
+/* Hidden-from-map stop marker — dimmed in admin editor */
+.leaflet-marker-hidden {
+  opacity: 0.4;
+  filter: grayscale(1);
+}

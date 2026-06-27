@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         lng: Number(stop.lng),
         order: stop.order ?? 0,
         tags: stop.tags ? JSON.stringify(stop.tags) : null,
+        hideFromMap: !!stop.hideFromMap,
       },
     })
 

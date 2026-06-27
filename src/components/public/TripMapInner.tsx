@@ -31,9 +31,10 @@ export default function TripMapInner({ stops }: { stops: Stop[] }) {
   }, [])
 
   const sorted = [...stops].sort((a, b) => a.order - b.order)
-  const routePositions: [number, number][] = sorted.map((s) => [s.lat, s.lng])
-  const bounds = getBounds(sorted)
-  const center: [number, number] = sorted.length > 0 ? [sorted[0].lat, sorted[0].lng] : [42, 74]
+  const visible = sorted.filter((s) => !s.hideFromMap)
+  const routePositions: [number, number][] = visible.map((s) => [s.lat, s.lng])
+  const bounds = getBounds(visible)
+  const center: [number, number] = visible.length > 0 ? [visible[0].lat, visible[0].lng] : sorted.length > 0 ? [sorted[0].lat, sorted[0].lng] : [42, 74]
 
   return (
     <MapContainer
@@ -52,7 +53,7 @@ export default function TripMapInner({ stops }: { stops: Stop[] }) {
         <Polyline positions={routePositions} color="#007aff" weight={3} opacity={0.8} />
       )}
 
-      {sorted.map((stop, idx) => (
+      {visible.map((stop, idx) => (
         <Marker key={stop.id} position={[stop.lat, stop.lng]}>
           <Popup>
             <div>

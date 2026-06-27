@@ -28,6 +28,7 @@ const AI_PROMPT = `Vytvoř popis výletu ve formátu JSON podle níže uvedené 
       "tags": [
         { "emoji": "🚗", "label": "320 km autem" }
       ],
+      "hideFromMap": false,
       "photos": []
     }
   ]
@@ -35,6 +36,7 @@ const AI_PROMPT = `Vytvoř popis výletu ve formátu JSON podle níže uvedené 
 
 PRAVIDLA — NUTNO DODRŽET:
 - tripType: jedna z hodnot roadtrip | trekking | město | dobrodružství
+- hideFromMap: true pouze pro zastávky, které jsou čistě logistické (přestup, průjezd) a nemají být vidět jako bod na mapě — výchozí hodnota je false
 - lat a lng jsou desetinná čísla (ne string), přesné GPS souřadnice středu místa
 - Zastávky řaď chronologicky, order začíná od 0
 - Každá zastávka musí mít title, lat a lng

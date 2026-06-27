@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await request.json()
-  const { title, description, date, lat, lng, order, tags } = body
+  const { title, description, date, lat, lng, order, tags, hideFromMap } = body
 
   if (!title || lat === undefined || lng === undefined) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       lng,
       order: order ?? 0,
       tags: tags || null,
+      hideFromMap: !!hideFromMap,
     },
     include: { photos: true },
   })

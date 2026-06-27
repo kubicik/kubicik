@@ -34,6 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       lng: stop.lng,
       order: stop.order,
       tags: (() => { try { return JSON.parse(stop.tags ?? "null") } catch { return null } })(),
+      hideFromMap: stop.hideFromMap || undefined,
       photos: stop.photos.map((p) => ({ url: p.url, caption: p.caption, order: p.order })),
     })),
   }

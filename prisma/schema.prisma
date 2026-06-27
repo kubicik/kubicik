@@ -60,6 +60,7 @@ model Stop {
   lat         Float
   lng         Float
   order       Int       @default(0)
+  hideFromMap Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

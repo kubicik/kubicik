@@ -55,6 +55,7 @@ export default function StopMap({
 }: Props) {
   const defaultIconRef = useRef<Icon | null>(null)
   const selectedIconRef = useRef<Icon | null>(null)
+  const hiddenIconRef = useRef<Icon | null>(null)
   const [iconsReady, setIconsReady] = useState(false)
 
   useEffect(() => {
@@ -86,6 +87,17 @@ export default function StopMap({
       iconAnchor: [12, 41],
       popupAnchor: [1, -34],
       shadowSize: [41, 41],
+    })
+
+    hiddenIconRef.current = new L.Icon({
+      iconUrl: "/leaflet/marker-icon.png",
+      iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+      shadowUrl: "/leaflet/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+      className: "leaflet-marker-hidden",
     })
 
     setIconsReady(true)
@@ -129,6 +141,8 @@ export default function StopMap({
           icon={
             stop.id === selectedStopId
               ? selectedIconRef.current!
+              : stop.hideFromMap
+              ? hiddenIconRef.current!
               : defaultIconRef.current!
           }
           eventHandlers={{
@@ -141,6 +155,7 @@ export default function StopMap({
         >
           <Popup>
             <strong>{stop.title}</strong>
+            {stop.hideFromMap && <><br /><span style={{ color: "#ff9f0a", fontSize: "11px" }}>⊘ skryta z mapy</span></>}
             {stop.date && <><br />{new Date(stop.date).toLocaleDateString("cs-CZ")}</>}
           </Popup>
         </Marker>

@@ -145,6 +145,7 @@ export default function StopForm({
   const [description, setDescription] = useState("")
   const [date, setDate] = useState("")
   const [tags, setTags] = useState<Tag[]>([])
+  const [hideFromMap, setHideFromMap] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null)
   const [descTab, setDescTab] = useState<"edit" | "preview">("edit")
@@ -155,11 +156,13 @@ export default function StopForm({
       setDescription(stop.description ?? "")
       setDate(toDateInputValue(stop.date))
       setTags(parseTags(stop.tags))
+      setHideFromMap(stop.hideFromMap ?? false)
     } else {
       setTitle("")
       setDescription("")
       setDate("")
       setTags([])
+      setHideFromMap(false)
     }
     setDescTab("edit")
   }, [stop?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -176,6 +179,7 @@ export default function StopForm({
       lng: stop?.lng,
       order: stop?.order,
       tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
+      hideFromMap,
     })
     setSaving(false)
   }
@@ -250,6 +254,18 @@ export default function StopForm({
               className="w-full px-3 py-2 bg-[#f2f2f7] rounded-xl text-[#1d1d1f] text-sm focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-shadow"
             />
           </div>
+          <label className="flex items-center justify-between cursor-pointer py-0.5">
+            <div>
+              <p className="text-xs font-medium text-[#3a3a3c]">Skrýt z mapy</p>
+              <p className="text-[10px] text-[#8e8e93]">Zastávka se nezobrazí jako bod v mapě</p>
+            </div>
+            <div
+              onClick={() => setHideFromMap(!hideFromMap)}
+              className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${hideFromMap ? "bg-[#ff9f0a]" : "bg-[#e5e5ea]"}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${hideFromMap ? "translate-x-4" : "translate-x-0.5"}`} />
+            </div>
+          </label>
         </div>
       </Section>
 

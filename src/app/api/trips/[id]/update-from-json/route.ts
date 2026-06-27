@@ -68,6 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         lng: Number(stop.lng),
         order: stop.order ?? 0,
         tags: stop.tags ? JSON.stringify(stop.tags) : null,
+        hideFromMap: !!stop.hideFromMap,
       },
     })
   }
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         lng: Number(stop.lng),
         order: stop.order ?? 0,
         tags: stop.tags ? JSON.stringify(stop.tags) : null,
+        hideFromMap: !!stop.hideFromMap,
       },
     })
     if (Array.isArray(stop.photos)) {
