@@ -42,7 +42,6 @@ function makeSeriesRow(overrides = {}) {
     displayMode: "missing_only",
     totalCardsCount: 500,
     imageUrl: null,
-    pricePerCard: null,
     isPricingEnabled: false,
     slug: "panini-2026",
     createdAt: new Date("2026-01-01"),
@@ -153,13 +152,13 @@ describe("POST /api/card-series", () => {
   it("creates series with explicit sport, tier, and pricing", async () => {
     mockAuth.mockResolvedValue(SESSION)
     mockCardSeries.findUnique.mockResolvedValue(null)
-    mockCardSeries.create.mockResolvedValue(makeSeriesRow({ sport: "hockey", tier: "premium", pricePerCard: 25, isPricingEnabled: true }))
+    mockCardSeries.create.mockResolvedValue(makeSeriesRow({ sport: "hockey", tier: "premium", isPricingEnabled: true }))
 
-    await POST(req({ name: "Upper Deck", year: 2026, sport: "hockey", tier: "premium", pricePerCard: 25, isPricingEnabled: true }))
+    await POST(req({ name: "Upper Deck", year: 2026, sport: "hockey", tier: "premium", isPricingEnabled: true }))
 
     expect(mockCardSeries.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ sport: "hockey", tier: "premium", pricePerCard: 25, isPricingEnabled: true }),
+        data: expect.objectContaining({ sport: "hockey", tier: "premium", isPricingEnabled: true }),
       })
     )
   })

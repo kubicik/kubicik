@@ -12,7 +12,7 @@ Next.js 16 has breaking changes from earlier versions. Read `node_modules/next/d
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # migrate + seed + next build
 npm run lint         # ESLint
-npm run db:seed      # Create admin user (admin/admin) if missing
+npm run db:seed      # Create admin user if missing (email: admin@kubicik.cz / password: admin)
 npm test             # Run Vitest test suite (once)
 npm run test:watch   # Run Vitest in watch mode
 npx vitest run src/app/api/upload/__tests__/route.test.ts  # Run a single test file
@@ -21,6 +21,8 @@ npx prisma studio                          # Browse the database
 ```
 
 **Migrations** — do NOT use `prisma migrate dev`. Instead, write SQL manually in `prisma/migrations/<timestamp_name>/migration.sql` and update `schema.prisma`. The custom runner `scripts/migrate.ts` applies unapplied migrations on every build.
+
+**libSQL FK constraint gotcha** — `ON UPDATE CASCADE` in migration SQL causes `SQLITE_UNKNOWN_0: not an error` when `scripts/migrate.ts` runs statements in batch mode. Omit `ON UPDATE CASCADE` from all FK constraints (libSQL doesn't need it for standard cascade-on-delete behaviour).
 
 ## Environment Variables
 
@@ -31,6 +33,7 @@ TURSO_AUTH_TOKEN=eyJ...             # required when using Turso
 AUTH_SECRET=<random-string>         # NextAuth JWT secret
 BLOB_READ_WRITE_TOKEN=...           # Vercel Blob (production uploads)
 YOUTUBE_API_KEY=AIza...             # YouTube Data API v3 key (for match video search)
+RESEND_API_KEY=re_...               # Resend email API (password reset); if absent, reset URL is logged to console
 ```
 
 `DATABASE_URL` has a hardcoded fallback to `file:<cwd>/dev.db` in `prisma.config.ts`, `src/lib/prisma.ts`, and `src/auth.ts`, so local dev works without `.env`.
@@ -62,6 +65,10 @@ Split into two files to satisfy Edge Runtime constraints:
 - `src/auth.config.ts` — Edge-safe config (no Node.js imports). Used by `middleware.ts` for JWT validation only.
 - `src/auth.ts` — Full config with `Credentials` provider, bcrypt, and Prisma. Used by server components and API routes.
 
+The `Credentials` provider accepts **email or username** in the `email` field: it first queries `User.email`, then falls back to `User.username`. This allows existing accounts to log in with either.
+
+**Forgot/reset password** — `POST /api/auth/forgot-password` creates a `PasswordResetToken` (1-hour TTL) and emails a link via Resend (or logs it in dev). `POST /api/auth/reset-password` validates the token, bcrypt-hashes the new password, and deletes the token.
+
 In server components: `const session = await auth()` (imported from `@/auth`).  
 In client components: `useSession()` from `next-auth/react` (wrapped by `src/components/providers.tsx`).
 
@@ -74,6 +81,7 @@ src/app/
     trips/[slug]/    # Trip detail: hero, map, stop timeline, tips
     participants/    # Participant index + per-person trip list
     spurs/           # Tottenham match history (public)
+    kartickar/       # Card collection: sport-tab list + series detail checklist
   (admin)/           # Auth required — layout has sidebar
     error.tsx        # Error boundary: catches server component crashes
     admin/
@@ -81,8 +89,12 @@ src/app/
       trips/[id]/photos/ # TripPhoto bulk manager (drone + stop assignment)
       matches/       # Match list with inline editing + new/edit forms
       seasons/       # Season registry (číselník)
+      kartickar/     # Card series list/create/edit + variant manager
+      kartickar/tags # CardTag CRUD (číselník)
   api/               # REST endpoints; all protected except GET /api/trips
   auth/signin/       # Custom credentials login page
+  auth/forgot-password/   # Request reset link
+  auth/reset-password/    # Set new password via token
 ```
 
 Route groups `(public)` and `(admin)` share the root `layout.tsx` but have separate nested layouts. There is **no** `src/app/page.tsx` — the homepage is served entirely by `(public)/page.tsx`.
@@ -140,7 +152,7 @@ Leaflet icon defaults are fixed via `L.Icon.Default.mergeOptions` pointing to `/
 
 ### File Uploads
 
-`POST /api/upload` accepts `multipart/form-data` with fields `file` (File) and `type` (`"covers"` | `"stops"` | `"matches"` | `"trips"`).
+`POST /api/upload` accepts `multipart/form-data` with fields `file` (File) and `type` (`"covers"` | `"stops"` | `"matches"` | `"trips"` | `"cards"`).
 
 **Always compress client-side** before uploading — use `compressImage(file, type)` from `src/lib/compressImage.ts`. This converts to WebP ≤3.5 MB, staying under Vercel's 4.5 MB function payload limit. The route still validates MIME type and enforces a 5 MB hard limit.
 
@@ -197,20 +209,29 @@ Public pages use `export const revalidate = 60` for 1-minute ISR. The trip detai
 
 ### Kartičky (Card Collection)
 
-Three models: `CardSeries`, `Card`, `CardVariant`. Key design decisions:
+Four models: `CardSeries`, `Card`, `CardVariant`, `CardTag`. Key design decisions:
 
 - `CardSeries.displayMode` — `"missing_only"` | `"full_collection"`. Controls the public checklist view.
 - `CardSeries.totalCardsCount` — user-set total (e.g. 500 base cards). Used as denominator for progress bar percentage: `ownedVariants / totalCardsCount`.
+- `CardSeries.isPricingEnabled` — when true, per-card prices are shown in `CardVariantManager` and collection value is surfaced on public pages.
+- `CardSeries.tier` — `"premium"` | `"regular"`. Premium series show card images in `CardChecklist` (when `showImages` prop is set).
 - `Card.number` — card number/code (string, e.g. `"G-12"`). Unique per series: `@@unique([seriesId, number])`.
+- `Card.imageUrl` — optional card image. Uploaded via `PATCH /api/cards/[id]` with `{ imageUrl }`, using upload type `"cards"`. Shown as gallery on public detail for premium series.
+- `Card.price Float?` — individual card value in Kč. Set per-card in `CardVariantManager` (auto-saved on blur). Collection value = `Σ(card.price × ownedVariantCount)`.
 - `CardVariant` — represents one version of a card (Base, Red /99, Gold /25). `limitNumber` is nullable; `isOwned` is toggled via `PUT /api/card-variants/[id]`.
+- `CardTag` — tag číselník with `name`, `color` (hex), `symbol` (emoji). Implicit M2M to `CardSeries` via join table `_CardSeriesToCardTag`. CRUD at `/api/card-tags` and `/admin/kartickar/tags`.
 
 **AI Import flow** — `POST /api/card-series/[id]/import` accepts a JSON array of `{ number, name, variants: [{ variant_name, limit_number }] }`. If a card with the same number already exists, only new variants are added (no duplicates). The admin UI shows a copyable AI prompt; user processes raw checklist text in external AI, pastes resulting JSON, submits.
 
-**Public routes**: `/kartickar` (series list with progress bars), `/kartickar/[slug]` (detail with checklist).
+**Bulk-own shortcut** — `POST /api/card-series/[id]/bulk-own` accepts `{ missingNumbers: string[] }`. All variants of cards NOT in `missingNumbers` are set to `isOwned = true`; all variants of cards IN `missingNumbers` are set to `false`. Used by the text-field shortcut in `CardVariantManager`.
 
-**Admin routes**: `/admin/kartickar` (list + delete), `/admin/kartickar/new` (create), `/admin/kartickar/[id]` (edit + import + toggle is_owned).
+**Public routes**: `/kartickar` (sport-tab list with progress bars and collection values), `/kartickar/[slug]` (detail with checklist + optional image gallery).
+
+**Admin routes**: `/admin/kartickar` (list + delete), `/admin/kartickar/new` (create), `/admin/kartickar/[id]` (edit series + AI import + variant manager with pricing), `/admin/kartickar/tags` (CardTag CRUD).
 
 **Progress calculation**: `Math.min(100, Math.round(ownedVariants / totalCardsCount * 100))`. Color thresholds: green at 100%, blue above 50%, amber below.
+
+**Sport tabs** on `/kartickar` — `SportSectionsClient.tsx` is a client component that receives all series server-side and filters by sport tab client-side. No URL params needed; compatible with ISR.
 
 ### Trip Fields
 

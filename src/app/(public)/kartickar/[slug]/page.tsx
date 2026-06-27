@@ -33,11 +33,11 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const pct = series.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / series.totalCardsCount) * 100)) : 0
   const lastChanged = seriesLastChanged(series.updatedAt, allVariants.map((v) => v.updatedAt))
 
-  const collectionValue = series.isPricingEnabled && series.pricePerCard != null
-    ? Math.round(ownedCount * series.pricePerCard)
+  const collectionValue = series.isPricingEnabled
+    ? Math.round(series.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.filter((v) => v.isOwned).length, 0))
     : null
-  const maxValue = series.isPricingEnabled && series.pricePerCard != null
-    ? Math.round((series.totalCardsCount || allVariants.length) * series.pricePerCard)
+  const maxValue = series.isPricingEnabled
+    ? Math.round(series.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.length, 0))
     : null
 
   const cards: Card[] = sortCards(series.cards).map((c) => ({
@@ -47,6 +47,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     name: c.name,
     order: c.order,
     imageUrl: c.imageUrl,
+    price: c.price,
     createdAt: c.createdAt.toISOString(),
     variants: c.variants.map((v) => ({
       id: v.id,

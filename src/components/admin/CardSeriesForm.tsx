@@ -21,7 +21,6 @@ export default function CardSeriesForm({ initial }: Props) {
   const [totalCardsCount, setTotalCardsCount] = useState(initial?.totalCardsCount?.toString() ?? "0")
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "")
   const [isPricingEnabled, setIsPricingEnabled] = useState(initial?.isPricingEnabled ?? false)
-  const [pricePerCard, setPricePerCard] = useState(initial?.pricePerCard?.toString() ?? "")
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initial?.tags?.map((t) => t.id) ?? [])
   const [availableTags, setAvailableTags] = useState<CardTag[]>([])
   const [uploading, setUploading] = useState(false)
@@ -79,7 +78,6 @@ export default function CardSeriesForm({ initial }: Props) {
         totalCardsCount: Number(totalCardsCount),
         imageUrl: imageUrl || null,
         isPricingEnabled,
-        pricePerCard: isPricingEnabled && pricePerCard ? Number(pricePerCard) : null,
         tagIds: selectedTagIds,
       }
       const res = await fetch(isEdit ? `/api/card-series/${initial!.id}` : "/api/card-series", {
@@ -266,19 +264,7 @@ export default function CardSeriesForm({ initial }: Props) {
           </button>
         </div>
         {isPricingEnabled && (
-          <div>
-            <label className="block text-xs text-[#8e8e93] mb-1.5">Cena za kartu (Kč)</label>
-            <input
-              type="number"
-              value={pricePerCard}
-              onChange={(e) => setPricePerCard(e.target.value)}
-              min="0"
-              step="0.01"
-              placeholder="0"
-              className="w-48 px-3.5 py-2.5 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
-            />
-            <p className="mt-1 text-xs text-[#8e8e93]">Hodnota sbírky = počet vlastněných karet × cena</p>
-          </div>
+          <p className="mt-1.5 text-xs text-[#8e8e93]">Ceny jednotlivých karet se zadávají v sekci Správa sbírky níže.</p>
         )}
       </div>
 

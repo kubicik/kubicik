@@ -86,6 +86,7 @@ export interface Card {
   name: string
   order: number
   imageUrl: string | null
+  price: number | null
   createdAt: string
   variants?: CardVariant[]
 }
@@ -108,7 +109,6 @@ export interface CardSeries {
   displayMode: "missing_only" | "full_collection"
   totalCardsCount: number
   imageUrl: string | null
-  pricePerCard: number | null
   isPricingEnabled: boolean
   slug: string
   createdAt: string

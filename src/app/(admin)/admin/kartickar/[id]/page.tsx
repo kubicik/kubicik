@@ -34,7 +34,6 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     displayMode: series.displayMode as "missing_only" | "full_collection",
     totalCardsCount: series.totalCardsCount,
     imageUrl: series.imageUrl,
-    pricePerCard: series.pricePerCard,
     isPricingEnabled: series.isPricingEnabled,
     slug: series.slug,
     createdAt: series.createdAt.toISOString(),
@@ -52,6 +51,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     name: c.name,
     order: c.order,
     imageUrl: c.imageUrl,
+    price: c.price,
     createdAt: c.createdAt.toISOString(),
     variants: c.variants.map((v) => ({
       id: v.id,
@@ -92,7 +92,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
       <div className="space-y-6">
         <CardSeriesForm initial={seriesData} />
         <CardSeriesImport seriesId={series.id} />
-        <CardVariantManager seriesId={series.id} initialCards={cards} totalCardsCount={series.totalCardsCount} />
+        <CardVariantManager seriesId={series.id} initialCards={cards} totalCardsCount={series.totalCardsCount} isPricingEnabled={series.isPricingEnabled} />
       </div>
     </div>
   )

@@ -52,7 +52,6 @@ function makeSeriesRow(overrides = {}) {
     displayMode: "missing_only",
     totalCardsCount: 500,
     imageUrl: null,
-    pricePerCard: null,
     isPricingEnabled: false,
     slug: "panini-2026",
     createdAt: new Date("2026-01-01"),
@@ -155,20 +154,19 @@ describe("PUT /api/card-series/[id]", () => {
     expect(data.tier).toBe("premium")
   })
 
-  it("enables pricing with pricePerCard", async () => {
+  it("enables isPricingEnabled flag", async () => {
     mockAuth.mockResolvedValue(SESSION)
-    mockCardSeries.update.mockResolvedValue(makeSeriesRow({ isPricingEnabled: true, pricePerCard: 15 }))
-    await PUT(makePutReq("s1", { isPricingEnabled: true, pricePerCard: 15 }), params("s1"))
+    mockCardSeries.update.mockResolvedValue(makeSeriesRow({ isPricingEnabled: true }))
+    await PUT(makePutReq("s1", { isPricingEnabled: true }), params("s1"))
     const data = mockCardSeries.update.mock.calls[0][0].data
     expect(data.isPricingEnabled).toBe(true)
-    expect(data.pricePerCard).toBe(15)
   })
 
-  it("clears pricePerCard when passed null", async () => {
+  it("disables isPricingEnabled flag", async () => {
     mockAuth.mockResolvedValue(SESSION)
-    mockCardSeries.update.mockResolvedValue(makeSeriesRow())
-    await PUT(makePutReq("s1", { pricePerCard: null }), params("s1"))
-    expect(mockCardSeries.update.mock.calls[0][0].data.pricePerCard).toBeNull()
+    mockCardSeries.update.mockResolvedValue(makeSeriesRow({ isPricingEnabled: false }))
+    await PUT(makePutReq("s1", { isPricingEnabled: false }), params("s1"))
+    expect(mockCardSeries.update.mock.calls[0][0].data.isPricingEnabled).toBe(false)
   })
 
   it("sets tags via set when tagIds provided", async () => {

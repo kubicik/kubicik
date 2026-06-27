@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, pricePerCard, isPricingEnabled, tagIds } = body
+  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, isPricingEnabled, tagIds } = body
 
   const series = await prisma.cardSeries.update({
     where: { id },
@@ -49,7 +49,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       displayMode: displayMode ?? undefined,
       totalCardsCount: totalCardsCount != null ? Number(totalCardsCount) : undefined,
       imageUrl: imageUrl !== undefined ? (imageUrl || null) : undefined,
-      pricePerCard: pricePerCard !== undefined ? (pricePerCard != null ? Number(pricePerCard) : null) : undefined,
       isPricingEnabled: isPricingEnabled !== undefined ? !!isPricingEnabled : undefined,
       tags: tagIds !== undefined ? { set: (tagIds as string[]).map((tid) => ({ id: tid })) } : undefined,
     },

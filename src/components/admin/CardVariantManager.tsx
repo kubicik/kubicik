@@ -8,13 +8,18 @@ interface Props {
   seriesId: string
   initialCards: Card[]
   totalCardsCount: number
+  isPricingEnabled: boolean
 }
 
-export default function CardVariantManager({ seriesId, initialCards, totalCardsCount }: Props) {
+export default function CardVariantManager({ seriesId, initialCards, totalCardsCount, isPricingEnabled }: Props) {
   const [cards, setCards] = useState<Card[]>(initialCards)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState("")
   const [uploadingCardId, setUploadingCardId] = useState<string | null>(null)
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(initialCards.map((c) => [c.id, c.price != null ? String(c.price) : ""]))
+  )
+  const [savingPriceId, setSavingPriceId] = useState<string | null>(null)
 
   const [missingInput, setMissingInput] = useState("")
   const [bulkLoading, setBulkLoading] = useState(false)
@@ -23,6 +28,9 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
   const ownedCount = cards.flatMap((c) => c.variants ?? []).filter((v) => v.isOwned).length
   const totalVariants = cards.flatMap((c) => c.variants ?? []).length
   const pct = totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / totalCardsCount) * 100)) : 0
+  const collectionValue = isPricingEnabled
+    ? cards.reduce((sum, c) => sum + (c.price ?? 0) * (c.variants?.filter((v) => v.isOwned).length ?? 0), 0)
+    : 0
 
   const parsedMissing = useMemo(() => {
     return missingInput.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean)
@@ -124,6 +132,24 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
     setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, imageUrl: null } : c))
   }
 
+  async function updateCardPrice(cardId: string) {
+    const raw = priceInputs[cardId] ?? ""
+    const price = raw === "" ? null : Number(raw)
+    const current = cards.find((c) => c.id === cardId)?.price ?? null
+    if (price === current) return
+    setSavingPriceId(cardId)
+    try {
+      await fetch(`/api/cards/${cardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ price }),
+      })
+      setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, price } : c))
+    } finally {
+      setSavingPriceId(null)
+    }
+  }
+
   const filtered = search.trim()
     ? cards.filter(
         (c) =>
@@ -140,6 +166,11 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
           <p className="text-sm text-[#8e8e93]">
             {ownedCount} / {totalCardsCount || totalVariants} variant vlastněno
           </p>
+          {isPricingEnabled && collectionValue > 0 && (
+            <p className="text-sm text-[#34c759] font-medium mt-0.5">
+              Hodnota: {Math.round(collectionValue).toLocaleString("cs-CZ")} Kč
+            </p>
+          )}
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-[#007aff]">{pct}%</div>
@@ -268,6 +299,28 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
                   </button>
                 )}
               </div>
+              {isPricingEnabled && (
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-xs text-[#8e8e93] flex-shrink-0">Cena (Kč):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="—"
+                    value={priceInputs[card.id] ?? ""}
+                    onChange={(e) => setPriceInputs((prev) => ({ ...prev, [card.id]: e.target.value }))}
+                    onBlur={() => updateCardPrice(card.id)}
+                    disabled={savingPriceId === card.id}
+                    className="w-24 px-2.5 py-1 text-xs border border-[#e5e5ea] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff] disabled:opacity-50"
+                  />
+                  {savingPriceId === card.id && (
+                    <svg className="w-3.5 h-3.5 animate-spin text-[#007aff]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 {card.variants?.map((variant) => (
                   <button

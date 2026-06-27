@@ -7,11 +7,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
-  const { imageUrl } = await req.json()
+  const body = await req.json()
 
-  const card = await prisma.card.update({
-    where: { id },
-    data: { imageUrl: imageUrl || null },
-  })
+  const data: { imageUrl?: string | null; price?: number | null } = {}
+  if ("imageUrl" in body) data.imageUrl = body.imageUrl || null
+  if ("price" in body) data.price = body.price != null ? Number(body.price) : null
+
+  const card = await prisma.card.update({ where: { id }, data })
   return NextResponse.json({ ...card, createdAt: card.createdAt.toISOString() })
 }

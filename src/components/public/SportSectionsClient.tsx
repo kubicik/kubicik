@@ -7,10 +7,10 @@ import { relativeTime, seriesLastChanged } from "@/lib/relativeTime"
 type SeriesItem = {
   id: string; name: string; year: number; slug: string
   sport: string; tier: string; imageUrl: string | null
-  pricePerCard: number | null; isPricingEnabled: boolean
+  isPricingEnabled: boolean
   tags: { id: string; name: string; color: string; symbol: string }[]
   updatedAt: Date; totalCardsCount: number
-  cards: { variants: { isOwned: boolean; updatedAt: Date }[] }[]
+  cards: { price: number | null; variants: { isOwned: boolean; updatedAt: Date }[] }[]
 }
 
 type SportGroup = {
@@ -25,8 +25,8 @@ function SeriesCard({ s, now }: { s: SeriesItem; now: Date }) {
   const ownedCount = allVariants.filter((v) => v.isOwned).length
   const pct = s.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / s.totalCardsCount) * 100)) : 0
   const lastChanged = seriesLastChanged(s.updatedAt, allVariants.map((v) => v.updatedAt))
-  const collectionValue = s.isPricingEnabled && s.pricePerCard != null
-    ? Math.round(ownedCount * s.pricePerCard)
+  const collectionValue = s.isPricingEnabled
+    ? Math.round(s.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.filter((v) => v.isOwned).length, 0))
     : null
 
   return (
