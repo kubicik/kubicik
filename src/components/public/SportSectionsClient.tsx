@@ -10,7 +10,7 @@ type SeriesItem = {
   isPricingEnabled: boolean
   tags: { id: string; name: string; color: string; symbol: string }[]
   updatedAt: Date; totalCardsCount: number
-  cards: { price: number | null; variants: { isOwned: boolean; updatedAt: Date }[] }[]
+  cards: { variants: { isOwned: boolean; updatedAt: Date; price: number | null }[] }[]
 }
 
 type SportGroup = {
@@ -26,7 +26,7 @@ function SeriesCard({ s, now }: { s: SeriesItem; now: Date }) {
   const pct = s.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / s.totalCardsCount) * 100)) : 0
   const lastChanged = seriesLastChanged(s.updatedAt, allVariants.map((v) => v.updatedAt))
   const collectionValue = s.isPricingEnabled
-    ? Math.round(s.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.filter((v) => v.isOwned).length, 0))
+    ? Math.round(allVariants.filter((v) => v.isOwned).reduce((sum, v) => sum + (v.price ?? 0), 0))
     : null
 
   return (

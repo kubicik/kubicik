@@ -75,6 +75,7 @@ export interface CardVariant {
   variantName: string
   limitNumber: number | null
   isOwned: boolean
+  price: number | null
   createdAt: string
   updatedAt: string
 }
@@ -86,7 +87,6 @@ export interface Card {
   name: string
   order: number
   imageUrl: string | null
-  price: number | null
   createdAt: string
   variants?: CardVariant[]
 }

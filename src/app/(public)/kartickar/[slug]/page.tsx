@@ -34,10 +34,10 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const lastChanged = seriesLastChanged(series.updatedAt, allVariants.map((v) => v.updatedAt))
 
   const collectionValue = series.isPricingEnabled
-    ? Math.round(series.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.filter((v) => v.isOwned).length, 0))
+    ? Math.round(allVariants.filter((v) => v.isOwned).reduce((sum, v) => sum + (v.price ?? 0), 0))
     : null
   const maxValue = series.isPricingEnabled
-    ? Math.round(series.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.length, 0))
+    ? Math.round(allVariants.reduce((sum, v) => sum + (v.price ?? 0), 0))
     : null
 
   const cards: Card[] = sortCards(series.cards).map((c) => ({
@@ -47,7 +47,6 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     name: c.name,
     order: c.order,
     imageUrl: c.imageUrl,
-    price: c.price,
     createdAt: c.createdAt.toISOString(),
     variants: c.variants.map((v) => ({
       id: v.id,
@@ -55,6 +54,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
       variantName: v.variantName,
       limitNumber: v.limitNumber,
       isOwned: v.isOwned,
+      price: v.price,
       createdAt: v.createdAt.toISOString(),
       updatedAt: v.updatedAt.toISOString(),
     })),

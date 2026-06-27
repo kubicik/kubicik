@@ -7,7 +7,7 @@ export async function GET() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
     include: {
-      cards: { select: { price: true, variants: { select: { isOwned: true } } } },
+      cards: { select: { variants: { select: { isOwned: true, price: true } } } },
       tags: true,
     },
   })
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       slug,
       tags: tagIds?.length ? { connect: (tagIds as string[]).map((id) => ({ id })) } : undefined,
     },
-    include: { cards: { select: { price: true, variants: { select: { isOwned: true } } } }, tags: true },
+    include: { cards: { select: { variants: { select: { isOwned: true, price: true } } } }, tags: true },
   })
   return NextResponse.json(serialize(series), { status: 201 })
 }
@@ -48,13 +48,14 @@ function serialize(s: {
   id: string; name: string; year: number; sport: string; tier: string; displayMode: string
   totalCardsCount: number; imageUrl: string | null; isPricingEnabled: boolean
   slug: string; createdAt: Date; updatedAt: Date
-  cards: { price: number | null; variants: { isOwned: boolean }[] }[]
+  cards: { variants: { isOwned: boolean; price: number | null }[] }[]
   tags: { id: string; name: string; color: string; symbol: string; createdAt: Date; updatedAt: Date }[]
 }) {
-  const ownedVariantsCount = s.cards.flatMap((c) => c.variants).filter((v) => v.isOwned).length
-  const totalVariantsCount = s.cards.flatMap((c) => c.variants).length
+  const allVariants = s.cards.flatMap((c) => c.variants)
+  const ownedVariantsCount = allVariants.filter((v) => v.isOwned).length
+  const totalVariantsCount = allVariants.length
   const collectionValue = s.isPricingEnabled
-    ? s.cards.reduce((sum, c) => sum + (c.price ?? 0) * c.variants.filter((v) => v.isOwned).length, 0)
+    ? allVariants.filter((v) => v.isOwned).reduce((sum, v) => sum + (v.price ?? 0), 0)
     : null
 
   return {

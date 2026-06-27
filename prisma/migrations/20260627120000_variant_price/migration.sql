@@ -1,0 +1,2 @@
+ALTER TABLE "CardVariant" ADD COLUMN "price" REAL;
+ALTER TABLE "Card" DROP COLUMN "price";

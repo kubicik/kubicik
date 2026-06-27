@@ -7,7 +7,7 @@ const AI_PROMPT = `Vytvoř popis výletu ve formátu JSON podle níže uvedené 
 
 {
   "title": "Název výletu",
-  "description": "Stručný popis výletu (2–4 věty). Podporuje **tučný text**, *kurzívu*, ==zvýraznění==.",
+  "description": "Stručný popis výletu (2–4 věty).",
   "startDate": "RRRR-MM-DD",
   "endDate": "RRRR-MM-DD",
   "country": "Název cílové země",
@@ -20,7 +20,7 @@ const AI_PROMPT = `Vytvoř popis výletu ve formátu JSON podle níže uvedené 
   "stops": [
     {
       "title": "Název zastávky nebo lokace",
-      "description": "Detailní popis dne nebo místa. Prázdný řádek odděluje odstavce.\\n\\n> Řádek začínající > je citace nebo osobní poznámka.\\n\\nText ==mezi == je zvýrazněn žlutě. **Tučný text** a *kurzíva* fungují standardně.",
+      "description": "Detailní popis dne nebo místa.",
       "date": "RRRR-MM-DD",
       "lat": 50.0755,
       "lng": 14.4378,
@@ -33,12 +33,26 @@ const AI_PROMPT = `Vytvoř popis výletu ve formátu JSON podle níže uvedené 
   ]
 }
 
-Pravidla:
-- tripType musí být jedna z hodnot: roadtrip, trekking, město, dobrodružství
-- lat a lng jsou čísla (ne string), musí být přesné GPS souřadnice
+PRAVIDLA — NUTNO DODRŽET:
+- tripType: jedna z hodnot roadtrip | trekking | město | dobrodružství
+- lat a lng jsou desetinná čísla (ne string), přesné GPS souřadnice středu místa
 - Zastávky řaď chronologicky, order začíná od 0
 - Každá zastávka musí mít title, lat a lng
-- Popis zastávky může být delší — piš co se tam dělo, co jsme viděli, jak jsme se cítili`
+
+FORMÁTOVÁNÍ TEXTU v polích description (výlet i zastávky):
+- Prázdný řádek (\\n\\n) odděluje odstavce — používej pro přirozené členění textu
+- **tučný text** — pro důraz na název místa, klíčovou informaci
+- *kurzíva* — pro názvy, citáty, cizí slova
+- ==zvýrazněný text== — žluté pozadí, pro zajímavost nebo vtipnou poznámku
+- > text začínající > — modrý blok citace, pro osobní postřeh nebo pocit
+- Kombinace je možná: **==tučné zvýraznění==**, *==kurzíva se zvýrazněním==*
+- Nepsat HTML tagy — jen výše uvedenou syntaxi
+
+POPIS ZASTÁVKY — jak psát:
+- Piš přirozeně, jako cestovní deník — co jsme viděli, jak jsme se cítili, co nás překvapilo
+- Klidně delší odstavce (5–10 vět), každý den může mít vlastní zastávku
+- Tagy slouží pro stručné fakta: vzdálenost, dopravní prostředek, výšku, počasí
+  Příklady tagů: { "emoji": "🚗", "label": "320 km autem" }, { "emoji": "⛰️", "label": "4 200 m n.m." }, { "emoji": "☀️", "label": "Slunečno" }`
 
 export default function TripImportButton() {
   const [open, setOpen] = useState(false)

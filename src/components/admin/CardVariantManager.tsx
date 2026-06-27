@@ -17,7 +17,9 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
   const [search, setSearch] = useState("")
   const [uploadingCardId, setUploadingCardId] = useState<string | null>(null)
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>(() =>
-    Object.fromEntries(initialCards.map((c) => [c.id, c.price != null ? String(c.price) : ""]))
+    Object.fromEntries(
+      initialCards.flatMap((c) => c.variants ?? []).map((v) => [v.id, v.price != null ? String(v.price) : ""])
+    )
   )
   const [savingPriceId, setSavingPriceId] = useState<string | null>(null)
 
@@ -29,7 +31,7 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
   const totalVariants = cards.flatMap((c) => c.variants ?? []).length
   const pct = totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / totalCardsCount) * 100)) : 0
   const collectionValue = isPricingEnabled
-    ? cards.reduce((sum, c) => sum + (c.price ?? 0) * (c.variants?.filter((v) => v.isOwned).length ?? 0), 0)
+    ? cards.flatMap((c) => c.variants ?? []).filter((v) => v.isOwned).reduce((sum, v) => sum + (v.price ?? 0), 0)
     : 0
 
   const parsedMissing = useMemo(() => {
@@ -132,19 +134,23 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
     setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, imageUrl: null } : c))
   }
 
-  async function updateCardPrice(cardId: string) {
-    const raw = priceInputs[cardId] ?? ""
+  async function updateVariantPrice(variantId: string, cardId: string) {
+    const raw = priceInputs[variantId] ?? ""
     const price = raw === "" ? null : Number(raw)
-    const current = cards.find((c) => c.id === cardId)?.price ?? null
+    const current = cards.find((c) => c.id === cardId)?.variants?.find((v) => v.id === variantId)?.price ?? null
     if (price === current) return
-    setSavingPriceId(cardId)
+    setSavingPriceId(variantId)
     try {
-      await fetch(`/api/cards/${cardId}`, {
-        method: "PATCH",
+      await fetch(`/api/card-variants/${variantId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ price }),
       })
-      setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, price } : c))
+      setCards((prev) => prev.map((c) =>
+        c.id === cardId
+          ? { ...c, variants: c.variants?.map((v) => v.id === variantId ? { ...v, price } : v) }
+          : c
+      ))
     } finally {
       setSavingPriceId(null)
     }
@@ -299,52 +305,52 @@ export default function CardVariantManager({ seriesId, initialCards, totalCardsC
                   </button>
                 )}
               </div>
-              {isPricingEnabled && (
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-xs text-[#8e8e93] flex-shrink-0">Cena (Kč):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="—"
-                    value={priceInputs[card.id] ?? ""}
-                    onChange={(e) => setPriceInputs((prev) => ({ ...prev, [card.id]: e.target.value }))}
-                    onBlur={() => updateCardPrice(card.id)}
-                    disabled={savingPriceId === card.id}
-                    className="w-24 px-2.5 py-1 text-xs border border-[#e5e5ea] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff] disabled:opacity-50"
-                  />
-                  {savingPriceId === card.id && (
-                    <svg className="w-3.5 h-3.5 animate-spin text-[#007aff]" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  )}
-                </div>
-              )}
               <div className="flex flex-wrap gap-2">
                 {card.variants?.map((variant) => (
-                  <button
-                    key={variant.id}
-                    onClick={() => toggleVariant(card.id, variant)}
-                    disabled={toggling.has(variant.id)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-60 ${
-                      variant.isOwned
-                        ? "bg-[#f0fff4] text-[#34c759] border-[#34c759]/30"
-                        : "bg-[#f2f2f7] text-[#8e8e93] border-[#e5e5ea] hover:bg-[#fff2f0] hover:text-[#ff3b30] hover:border-[#ff3b30]/30"
-                    }`}
-                  >
-                    {variant.isOwned ? (
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                  <div key={variant.id} className="flex flex-col items-center gap-0.5">
+                    <button
+                      onClick={() => toggleVariant(card.id, variant)}
+                      disabled={toggling.has(variant.id)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-60 ${
+                        variant.isOwned
+                          ? "bg-[#f0fff4] text-[#34c759] border-[#34c759]/30"
+                          : "bg-[#f2f2f7] text-[#8e8e93] border-[#e5e5ea] hover:bg-[#fff2f0] hover:text-[#ff3b30] hover:border-[#ff3b30]/30"
+                      }`}
+                    >
+                      {variant.isOwned ? (
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      {variant.variantName}
+                      {variant.limitNumber != null && <span className="opacity-70">/{variant.limitNumber}</span>}
+                    </button>
+                    {isPricingEnabled && (
+                      <div className="flex items-center">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Kč"
+                          value={priceInputs[variant.id] ?? ""}
+                          onChange={(e) => setPriceInputs((prev) => ({ ...prev, [variant.id]: e.target.value }))}
+                          onBlur={() => updateVariantPrice(variant.id, card.id)}
+                          disabled={savingPriceId === variant.id}
+                          className="w-16 px-1.5 py-0.5 text-[10px] text-center border border-[#e5e5ea] rounded-md focus:outline-none focus:ring-1 focus:ring-[#007aff]/40 focus:border-[#007aff] disabled:opacity-50"
+                        />
+                        {savingPriceId === variant.id && (
+                          <svg className="w-3 h-3 ml-1 animate-spin text-[#007aff] flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        )}
+                      </div>
                     )}
-                    {variant.variantName}
-                    {variant.limitNumber != null && <span className="opacity-70">/{variant.limitNumber}</span>}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>

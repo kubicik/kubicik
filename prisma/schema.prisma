@@ -158,7 +158,6 @@ model Card {
   name      String
   order     Int        @default(0)
   imageUrl  String?
-  price     Float?
   createdAt DateTime   @default(now())
 
   variants CardVariant[]
@@ -184,6 +183,7 @@ model CardVariant {
   variantName String
   limitNumber Int?
   isOwned     Boolean  @default(false)
+  price       Float?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

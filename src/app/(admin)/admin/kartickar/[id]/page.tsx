@@ -51,7 +51,6 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     name: c.name,
     order: c.order,
     imageUrl: c.imageUrl,
-    price: c.price,
     createdAt: c.createdAt.toISOString(),
     variants: c.variants.map((v) => ({
       id: v.id,
@@ -59,6 +58,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
       variantName: v.variantName,
       limitNumber: v.limitNumber,
       isOwned: v.isOwned,
+      price: v.price,
       createdAt: v.createdAt.toISOString(),
       updatedAt: v.updatedAt.toISOString(),
     })),
