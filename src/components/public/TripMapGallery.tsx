@@ -13,16 +13,20 @@ interface Props {
 }
 
 export default function TripMapGallery({ stops: allStops }: Props) {
-  const stopsWithPhotos = useMemo(
-    () => allStops.filter((s) => (s.photos?.length ?? 0) > 0),
+  const visibleStops = useMemo(
+    () => allStops.filter((s) => !s.hideFromMap),
     [allStops]
   )
-  const firstWithPhotos = stopsWithPhotos[0] ?? allStops[0] ?? null
+  const stopsWithPhotos = useMemo(
+    () => visibleStops.filter((s) => (s.photos?.length ?? 0) > 0),
+    [visibleStops]
+  )
+  const firstWithPhotos = stopsWithPhotos[0] ?? visibleStops[0] ?? null
   const [selectedStopId, setSelectedStopId] = useState<string | null>(
     firstWithPhotos?.id ?? null
   )
 
-  const selectedStop = allStops.find((s) => s.id === selectedStopId) ?? null
+  const selectedStop = visibleStops.find((s) => s.id === selectedStopId) ?? null
   const photos = selectedStop?.photos ?? []
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
@@ -48,7 +52,7 @@ export default function TripMapGallery({ stops: allStops }: Props) {
           {/* Map */}
           <div className="h-[420px] lg:h-full bg-[#f5f5f7]">
             <TripMapGalleryInner
-              stops={allStops}
+              stops={visibleStops}
               selectedStopId={selectedStopId}
               onStopSelect={handleStopSelect}
             />
@@ -172,7 +176,7 @@ export default function TripMapGallery({ stops: allStops }: Props) {
 
         {/* Stop list pills below map */}
         <div className="mt-4 flex flex-wrap gap-2">
-          {allStops.map((stop, idx) => (
+          {visibleStops.map((stop, idx) => (
             <button
               key={stop.id}
               onClick={() => handleStopSelect(stop)}
