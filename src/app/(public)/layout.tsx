@@ -10,7 +10,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <div className="w-7 h-7 bg-[#007aff] rounded-lg flex items-center justify-center shadow-sm select-none">
               <span className="text-white font-extrabold text-sm leading-none tracking-tight">K</span>
             </div>
-            <span className="font-semibold text-[#1d1d1f] text-sm">Kubičík Gang</span>
+            <span className="font-semibold text-[#1d1d1f] text-sm">Kubičík.OVI</span>
           </Link>
           <div className="flex items-center gap-5">
             <Link
@@ -48,7 +48,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {/* Footer */}
       <footer className="border-t border-[#e5e5ea] py-6">
         <div className="max-w-5xl mx-auto px-6 flex items-center justify-between text-[#8e8e93] text-sm">
-          <span>© {new Date().getFullYear()} Kubičík Gang</span>
+          <span>© {new Date().getFullYear()} Kubičík.OVI</span>
           <Link href="/admin" className="hover:text-[#1d1d1f] transition-colors">
             Admin
           </Link>

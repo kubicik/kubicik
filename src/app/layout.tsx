@@ -3,7 +3,7 @@ import "./globals.css"
 import { Providers } from "@/components/providers"
 
 export const metadata: Metadata = {
-  title: "Kubičík Gang",
+  title: "Kubičík.OVI",
   description: "Naše cesty po světě",
 }
 

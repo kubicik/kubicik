@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from: process.env.EMAIL_FROM ?? "noreply@kubicik.cz",
         to: user.email,
-        subject: "Obnovení hesla – Kubicik Travel",
+        subject: "Obnovení hesla – Kubičík.OVI",
         html: `<p>Dobrý den,</p>
 <p>klikněte na odkaz níže pro nastavení nového hesla. Odkaz je platný 1 hodinu.</p>
 <p><a href="${resetUrl}">${resetUrl}</a></p>

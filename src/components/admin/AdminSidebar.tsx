@@ -121,7 +121,7 @@ export default function AdminSidebar({ user }: Props) {
                 d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064" />
             </svg>
           </div>
-          <span className="font-semibold text-[#1d1d1f] text-sm">Kubicik Travel</span>
+          <span className="font-semibold text-[#1d1d1f] text-sm">Kubičík.OVI</span>
         </Link>
       </div>
 

@@ -43,7 +43,7 @@ export default function SignInPage() {
                 d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-[#1d1d1f]">Kubicik Travel</h1>
+          <h1 className="text-2xl font-semibold text-[#1d1d1f]">Kubičík.OVI</h1>
           <p className="text-[#8e8e93] text-sm mt-1">Přihlaste se do administrace</p>
         </div>
 
