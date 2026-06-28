@@ -5,6 +5,7 @@ import TripMapGallery from "@/components/public/TripMapGallery"
 import TripDays from "@/components/public/TripDays"
 import TripTips from "@/components/public/TripTips"
 import TripDronePhotos from "@/components/public/TripDronePhotos"
+import MarkdownText from "@/components/public/MarkdownText"
 import type { Stop, Photo, TripPhoto } from "@/types"
 
 export const revalidate = 60
@@ -166,9 +167,10 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
           </p>
 
           {trip.description && (
-            <p className="text-lg text-[#3a3a3c] leading-[1.75] max-w-2xl whitespace-pre-line">
-              {trip.description}
-            </p>
+            <MarkdownText
+              text={trip.description}
+              className="text-lg text-[#3a3a3c] leading-[1.75] max-w-2xl"
+            />
           )}
         </div>
       </header>
