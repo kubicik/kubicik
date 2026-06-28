@@ -6,7 +6,7 @@ import type { Stop } from "@/types"
 
 // ── Inline markdown renderer ─────────────────────────────────────────────────
 function renderInline(text: string): React.ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|==[^=]+==[^=]?)/g).map((seg, i) => {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|==[^=]+==)/g).map((seg, i) => {
     if (seg.startsWith("**") && seg.endsWith("**"))
       return <strong key={i}>{seg.slice(2, -2)}</strong>
     if (seg.startsWith("*") && seg.endsWith("*"))
