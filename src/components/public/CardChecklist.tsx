@@ -55,12 +55,17 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
 
       {subsets.map((subset) => {
         const cards = subset.cards ?? []
-        const parallels = subset.parallels ?? []
+        // Only show parallels that are being collected
+        const parallels = (subset.parallels ?? []).filter((p) => p.isCollected)
+        const collectedParallelIds = new Set(parallels.map((p) => p.id))
 
         let visible = cards
         if (displayMode === "missing_only") {
           visible = cards
-            .map((c) => ({ ...c, variants: c.variants?.filter((v) => !v.isOwned) ?? [] }))
+            .map((c) => ({
+              ...c,
+              variants: (c.variants ?? []).filter((v) => collectedParallelIds.has(v.parallelId) && !v.isOwned),
+            }))
             .filter((c) => c.variants.length > 0)
         }
 
@@ -138,6 +143,9 @@ function CardRow({ card, parallels, displayMode, showImages }: { card: Card; par
           <span className={`text-sm font-medium ${displayMode === "full_collection" && allOwned ? "text-[#8e8e93] line-through" : "text-[#1d1d1f]"}`}>
             {card.name}
           </span>
+          {card.club && (
+            <span className="text-xs text-[#8e8e93] truncate">{card.club}</span>
+          )}
         </div>
 
         {parallels.length > 0 && (

@@ -184,6 +184,7 @@ model Card {
   subset    CardSubset @relation(fields: [subsetId], references: [id], onDelete: Cascade)
   number    String
   name      String
+  club      String?
   order     Int        @default(0)
   imageUrl  String?
   createdAt DateTime   @default(now())

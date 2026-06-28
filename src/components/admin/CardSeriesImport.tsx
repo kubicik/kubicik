@@ -17,8 +17,9 @@ Struktura:
       { "name": "Gold", "limit_number": 25 }
     ],
     "cards": [
-      { "number": "1", "name": "Erling Haaland" },
-      { "number": "2", "name": "Phil Foden" }
+      { "number": "1", "name": "Erling Haaland", "club": "Manchester City" },
+      { "number": "2", "name": "Phil Foden", "club": "Manchester City" },
+      { "number": "3", "name": "Bukayo Saka", "club": "Arsenal" }
     ]
   },
   {
@@ -28,7 +29,7 @@ Struktura:
       { "name": "Base", "limit_number": null }
     ],
     "cards": [
-      { "number": "GI-1", "name": "Erling Haaland" }
+      { "number": "GI-1", "name": "Erling Haaland", "club": "Manchester City" }
     ]
   }
 ]
@@ -38,7 +39,8 @@ Pravidla:
 2. "limit_number" je číslo limitu (např. "/99" → 99) nebo null pro neomezené karty.
 3. Pokud je to jednoduchý seznam bez subsetů, dejte vše do jednoho subsetu "Base" s "is_special": false.
 4. Speciální inserty (Gold, Signatures, atd.) = "is_special": true s vlastním polem "cards".
-5. Výstup musí být jen čistý JSON, bez textu před ani za ním.
+5. "club" je klub/tým hráče — pokud není k dispozici, použij null.
+6. Výstup musí být jen čistý JSON, bez textu před ani za ním.
 
 Zde je surový text ke zpracování:
 [ZDE VLOŽTE TEXT CHECKLISTU]`
@@ -175,7 +177,7 @@ export default function CardSeriesImport({ seriesId }: { seriesId: string }) {
           value={jsonInput}
           onChange={(e) => { setJsonInput(e.target.value); setResult(null) }}
           disabled={loading}
-          placeholder={'[\n  {\n    "subset": "Base",\n    "is_special": false,\n    "parallels": [{ "name": "Base", "limit_number": null }],\n    "cards": [{ "number": "1", "name": "Erling Haaland" }]\n  }\n]'}
+          placeholder={'[\n  {\n    "subset": "Base",\n    "is_special": false,\n    "parallels": [{ "name": "Base", "limit_number": null }],\n    "cards": [{ "number": "1", "name": "Erling Haaland", "club": "Manchester City" }]\n  }\n]'}
           rows={8}
           className="w-full px-3.5 py-2.5 text-sm font-mono border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff] resize-y disabled:opacity-50"
         />

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { compressImage } from "@/lib/compressImage"
 import { sortCards } from "@/lib/sortCards"
+import CardSubsetImport from "@/components/admin/CardSubsetImport"
 import type { CardSubset, CardParallel, Card, CardVariant } from "@/types"
 
 interface Props {
@@ -95,6 +96,27 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
     if (!confirm("Smazat tento subset včetně všech karet?")) return
     await fetch(`/api/card-subsets/${id}`, { method: "DELETE" })
     setSubsets((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  async function toggleSubsetSpecial(id: string, newIsSpecial: boolean) {
+    await fetch(`/api/card-subsets/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isSpecial: newIsSpecial }),
+    })
+    setSubsets((prev) => prev.map((s) => s.id === id ? { ...s, isSpecial: newIsSpecial } : s))
+  }
+
+  async function reloadSubsets() {
+    const res = await fetch(`/api/card-series/${seriesId}`)
+    const data = await res.json()
+    setSubsets(data.subsets)
+    setPriceInputs((prev) => {
+      const next = { ...prev }
+      data.subsets.flatMap((sub: CardSubset) => (sub.cards ?? []).flatMap((c: Card) => c.variants ?? []))
+        .forEach((v: CardVariant) => { if (!(v.id in next)) next[v.id] = v.price != null ? String(v.price) : "" })
+      return next
+    })
   }
 
   // ── Parallel CRUD ────────────────────────────────────────────────────────────
@@ -388,6 +410,8 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
           onEditSubsetName={(v) => setEditSubsetName(v)}
           onCancelEditSubset={() => setEditingSubsetId(null)}
           onDeleteSubset={() => deleteSubset(subset.id)}
+          onToggleSubsetSpecial={(v) => toggleSubsetSpecial(subset.id, v)}
+          onImportComplete={reloadSubsets}
           onStartAddParallel={() => { setAddParallelSubsetId(subset.id); setNewParallelName(""); setNewParallelLimit("") }}
           onNewParallelNameChange={setNewParallelName}
           onNewParallelLimitChange={setNewParallelLimit}
@@ -485,6 +509,8 @@ interface SubsetSectionProps {
   onEditSubsetName: (v: string) => void
   onCancelEditSubset: () => void
   onDeleteSubset: () => void
+  onToggleSubsetSpecial: (newIsSpecial: boolean) => void
+  onImportComplete: () => void
   onStartAddParallel: () => void
   onNewParallelNameChange: (v: string) => void
   onNewParallelLimitChange: (v: string) => void
@@ -506,11 +532,12 @@ function SubsetSection({
   addingParallel, editingParallelId, editParallelName, editParallelLimit,
   onSearchChange, onMissingChange, onBulkOwn, onToggleVariant, onPriceChange, onPriceBlur,
   onImageUpload, onImageRemove, onEditSubset, onSaveSubsetName, onEditSubsetName, onCancelEditSubset,
-  onDeleteSubset, onStartAddParallel, onNewParallelNameChange, onNewParallelLimitChange,
-  onCreateParallel, onCancelAddParallel, onToggleParallelCollected, onStartEditParallel,
+  onDeleteSubset, onToggleSubsetSpecial, onImportComplete, onStartAddParallel, onNewParallelNameChange,
+  onNewParallelLimitChange, onCreateParallel, onCancelAddParallel, onToggleParallelCollected, onStartEditParallel,
   onEditParallelNameChange, onEditParallelLimitChange, onSaveParallel, onCancelEditParallel, onDeleteParallel,
 }: SubsetSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const isEditingThis = editingSubsetId === subset.id
   const isAddingParallelHere = addParallelSubsetId === subset.id
@@ -573,6 +600,22 @@ function SubsetSection({
 
           {!isEditingThis && (
             <div className="flex items-center gap-1 ml-auto">
+              <button
+                onClick={() => onToggleSubsetSpecial(!subset.isSpecial)}
+                className={`p-1.5 rounded-lg transition-colors text-sm ${subset.isSpecial ? "text-[#ff9f0a] hover:bg-[#fff8e6]" : "text-[#8e8e93] hover:bg-[#f2f2f7]"}`}
+                title={subset.isSpecial ? "Přepnout na Base" : "Přepnout na Speciální"}
+              >
+                {subset.isSpecial ? "✨" : "📦"}
+              </button>
+              <button
+                onClick={() => setShowImport((v) => !v)}
+                className={`p-1.5 rounded-lg transition-colors ${showImport ? "text-[#007aff] bg-[#f0f6ff]" : "text-[#8e8e93] hover:text-[#007aff] hover:bg-[#f0f6ff]"}`}
+                title="Importovat karty do tohoto subsetu"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </button>
               <button onClick={() => onEditSubset(subset.id)} className="p-1.5 text-[#8e8e93] hover:text-[#007aff] hover:bg-[#f0f6ff] rounded-lg transition-colors" title="Přejmenovat">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -677,6 +720,17 @@ function SubsetSection({
           </div>
         )}
       </div>
+
+      {/* Per-subset import */}
+      {showImport && (
+        <div className="px-6 pb-2">
+          <CardSubsetImport
+            subsetId={subset.id}
+            onImportComplete={() => { onImportComplete(); setShowImport(false) }}
+            onCancel={() => setShowImport(false)}
+          />
+        </div>
+      )}
 
       {/* Cards */}
       {!collapsed && (
@@ -786,9 +840,14 @@ function CardRow({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={card.imageUrl} alt={card.name} className="w-8 h-10 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0" />
         )}
-        <div className="flex-1 flex items-baseline gap-2">
-          <span className="text-xs font-mono text-[#8e8e93] bg-[#f2f2f7] px-1.5 py-0.5 rounded-md">#{card.number}</span>
-          <span className="text-sm font-medium text-[#1d1d1f]">{card.name}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-mono text-[#8e8e93] bg-[#f2f2f7] px-1.5 py-0.5 rounded-md">#{card.number}</span>
+            <span className="text-sm font-medium text-[#1d1d1f]">{card.name}</span>
+          </div>
+          {card.club && (
+            <p className="text-xs text-[#8e8e93] mt-0.5">{card.club}</p>
+          )}
         </div>
         <label className={`flex-shrink-0 p-1.5 rounded-lg cursor-pointer transition-colors ${uploadingCardId === card.id ? "opacity-50 pointer-events-none" : "text-[#8e8e93] hover:text-[#007aff] hover:bg-[#f0f6ff]"}`} title="Nahrát obrázek">
           {uploadingCardId === card.id ? (

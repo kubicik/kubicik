@@ -95,6 +95,7 @@ export interface Card {
   subsetId: string
   number: string
   name: string
+  club: string | null
   order: number
   imageUrl: string | null
   createdAt: string

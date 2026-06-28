@@ -80,6 +80,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
       subsetId: c.subsetId,
       number: c.number,
       name: c.name,
+      club: c.club,
       order: c.order,
       imageUrl: c.imageUrl,
       createdAt: c.createdAt.toISOString(),

@@ -85,6 +85,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
       subsetId: c.subsetId,
       number: c.number,
       name: c.name,
+      club: c.club,
       order: c.order,
       imageUrl: c.imageUrl,
       createdAt: c.createdAt.toISOString(),

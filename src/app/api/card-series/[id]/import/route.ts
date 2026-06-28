@@ -8,7 +8,7 @@ interface SubsetInput {
   subset: string
   is_special?: boolean
   parallels: ParallelInput[]
-  cards: { number: string; name: string }[]
+  cards: { number: string; name: string; club?: string | null }[]
 }
 
 // Old format (backward compat): flat card array
@@ -40,7 +40,7 @@ function legacyToNew(cards: LegacyCardInput[]): SubsetInput[] {
     subset: "Base",
     is_special: false,
     parallels,
-    cards: cards.map((c) => ({ number: String(c.number), name: String(c.name) })),
+    cards: cards.map((c) => ({ number: String(c.number), name: String(c.name), club: null })),
   }]
 }
 
@@ -129,11 +129,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             let cardId: string
             if (existingCard) {
               cardId = existingCard.id
-              await prisma.card.update({ where: { id: cardId }, data: { name: String(cardInput.name) } })
+              await prisma.card.update({
+                where: { id: cardId },
+                data: {
+                  name: String(cardInput.name),
+                  club: cardInput.club !== undefined ? (cardInput.club ? String(cardInput.club) : null) : undefined,
+                },
+              })
               updated++
             } else {
               const newCard = await prisma.card.create({
-                data: { subsetId, number: String(cardInput.number), name: String(cardInput.name) },
+                data: {
+                  subsetId,
+                  number: String(cardInput.number),
+                  name: String(cardInput.name),
+                  club: cardInput.club ? String(cardInput.club) : null,
+                },
               })
               cardId = newCard.id
               created++
