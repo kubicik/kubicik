@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import Image from "next/image"
 import type { Stop, Photo } from "@/types"
 import Lightbox from "./Lightbox"
+import MarkdownText from "./MarkdownText"
 
 const TripMapGalleryInner = dynamic(() => import("./TripMapGalleryInner"), { ssr: false })
 
@@ -78,9 +79,10 @@ export default function TripMapGallery({ stops: allStops }: Props) {
                     {selectedStop.title}
                   </h3>
                   {selectedStop.description && (
-                    <p className="text-sm text-[#6e6e73] mt-2 leading-relaxed line-clamp-3">
-                      {selectedStop.description}
-                    </p>
+                    <MarkdownText
+                      text={selectedStop.description}
+                      className="text-sm text-[#6e6e73] mt-2 leading-relaxed line-clamp-3"
+                    />
                   )}
                 </div>
 

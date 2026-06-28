@@ -181,8 +181,12 @@ function ParticipantChips({
 // ── Formatting hint ──────────────────────────────────────────────────────────
 function FormatHint() {
   return (
-    <p className="text-xs text-[#8e8e93] mt-1.5">
-      Prázdný řádek = nový odstavec. Tučně: <code className="bg-[#f2f2f7] px-1 rounded">**text**</code>, kurzíva: <code className="bg-[#f2f2f7] px-1 rounded">*text*</code>
+    <p className="text-[10px] text-[#8e8e93] mt-1.5 leading-relaxed">
+      Prázdný řádek = odstavec &nbsp;·&nbsp;
+      <code className="bg-[#f2f2f7] px-1 rounded">**tučně**</code>&nbsp;
+      <code className="bg-[#f2f2f7] px-1 rounded">*kurzíva*</code>&nbsp;
+      <code className="bg-[#f2f2f7] px-1 rounded">==zvýraznění==</code>&nbsp;·&nbsp;
+      Řádek začínající <code className="bg-[#f2f2f7] px-1 rounded">&gt;&nbsp;</code> = citace
     </p>
   )
 }

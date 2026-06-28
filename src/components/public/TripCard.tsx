@@ -1,5 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
+import MarkdownText from "./MarkdownText"
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
   roadtrip: "Roadtrip",
@@ -106,9 +107,10 @@ export default function TripCard({ trip, isSelected }: TripCardProps) {
         </p>
 
         {trip.description && (
-          <p className="text-[#6e6e73] text-sm line-clamp-2 leading-relaxed flex-1">
-            {trip.description}
-          </p>
+          <MarkdownText
+            text={trip.description}
+            className="text-[#6e6e73] text-sm line-clamp-2 leading-relaxed flex-1"
+          />
         )}
       </div>
     </Link>
