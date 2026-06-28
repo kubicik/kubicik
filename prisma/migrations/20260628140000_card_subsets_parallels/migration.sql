@@ -55,14 +55,48 @@ UPDATE "CardVariant" SET "parallelId" = (
   FROM "Card" c WHERE c."id" = "CardVariant"."cardId" LIMIT 1
 );
 
--- Drop old indexes before dropping columns
-DROP INDEX IF EXISTS "Card_seriesId_number_key";
-DROP INDEX IF EXISTS "CardVariant_cardId_variantName_key";
+-- Rebuild Card without seriesId FK and add updatedAt
+-- (SQLite cannot DROP COLUMN that is referenced in a FK definition)
+CREATE TABLE "Card_new" (
+  "id"        TEXT     NOT NULL PRIMARY KEY,
+  "subsetId"  TEXT     NOT NULL,
+  "number"    TEXT     NOT NULL,
+  "name"      TEXT     NOT NULL,
+  "order"     INTEGER  NOT NULL DEFAULT 0,
+  "imageUrl"  TEXT,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("subsetId") REFERENCES "CardSubset"("id") ON DELETE CASCADE
+);
 
--- Drop old columns
-ALTER TABLE "Card" DROP COLUMN "seriesId";
-ALTER TABLE "CardVariant" DROP COLUMN "variantName";
-ALTER TABLE "CardVariant" DROP COLUMN "limitNumber";
+INSERT INTO "Card_new" ("id", "subsetId", "number", "name", "order", "imageUrl", "createdAt", "updatedAt")
+SELECT "id", "subsetId", "number", "name", "order", "imageUrl", "createdAt", "createdAt"
+FROM "Card"
+WHERE "subsetId" IS NOT NULL;
+
+DROP TABLE "Card";
+ALTER TABLE "Card_new" RENAME TO "Card";
+
+-- Rebuild CardVariant without variantName + limitNumber
+CREATE TABLE "CardVariant_new" (
+  "id"         TEXT     NOT NULL PRIMARY KEY,
+  "cardId"     TEXT     NOT NULL,
+  "parallelId" TEXT     NOT NULL,
+  "isOwned"    INTEGER  NOT NULL DEFAULT 0,
+  "price"      REAL,
+  "createdAt"  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("cardId") REFERENCES "Card"("id") ON DELETE CASCADE,
+  FOREIGN KEY ("parallelId") REFERENCES "CardParallel"("id") ON DELETE CASCADE
+);
+
+INSERT INTO "CardVariant_new" ("id", "cardId", "parallelId", "isOwned", "price", "createdAt", "updatedAt")
+SELECT "id", "cardId", "parallelId", "isOwned", "price", "createdAt", "updatedAt"
+FROM "CardVariant"
+WHERE "parallelId" IS NOT NULL;
+
+DROP TABLE "CardVariant";
+ALTER TABLE "CardVariant_new" RENAME TO "CardVariant";
 
 -- New unique indexes
 CREATE UNIQUE INDEX "Card_subsetId_number_key" ON "Card"("subsetId", "number");
