@@ -3,8 +3,8 @@ import "./globals.css"
 import { Providers } from "@/components/providers"
 
 export const metadata: Metadata = {
-  title: "Kubicik Travel",
-  description: "Naše cestovatelské výlety",
+  title: "Kubičík Gang",
+  description: "Naše cesty po světě",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
