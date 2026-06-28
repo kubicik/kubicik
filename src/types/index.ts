@@ -70,11 +70,20 @@ export interface TripPhoto {
   createdAt: string
 }
 
+export interface CardParallel {
+  id: string
+  subsetId: string
+  name: string
+  limitNumber: number | null
+  isCollected: boolean
+  order: number
+}
+
 export interface CardVariant {
   id: string
   cardId: string
-  variantName: string
-  limitNumber: number | null
+  parallelId: string
+  parallel?: CardParallel
   isOwned: boolean
   price: number | null
   createdAt: string
@@ -83,13 +92,25 @@ export interface CardVariant {
 
 export interface Card {
   id: string
-  seriesId: string
+  subsetId: string
   number: string
   name: string
   order: number
   imageUrl: string | null
   createdAt: string
+  updatedAt: string
   variants?: CardVariant[]
+}
+
+export interface CardSubset {
+  id: string
+  seriesId: string
+  name: string
+  isSpecial: boolean
+  order: number
+  createdAt: string
+  parallels?: CardParallel[]
+  cards?: Card[]
 }
 
 export interface CardTag {
@@ -111,10 +132,11 @@ export interface CardSeries {
   totalCardsCount: number
   imageUrl: string | null
   isPricingEnabled: boolean
+  collectBase: boolean
   slug: string
   createdAt: string
   updatedAt: string
-  cards?: Card[]
+  subsets?: CardSubset[]
   tags?: CardTag[]
 }
 

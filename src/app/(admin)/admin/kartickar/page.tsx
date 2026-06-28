@@ -6,8 +6,8 @@ export default async function AdminKartickarPage() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
     include: {
-      cards: {
-        include: { variants: { select: { isOwned: true } } },
+      subsets: {
+        include: { cards: { include: { variants: { select: { isOwned: true } } } } },
       },
     },
   })
@@ -37,7 +37,7 @@ export default async function AdminKartickarPage() {
       ) : (
         <div className="space-y-3">
           {series.map((s) => {
-            const ownedCount = s.cards.flatMap((c) => c.variants).filter((v) => v.isOwned).length
+            const ownedCount = s.subsets.flatMap((sub) => sub.cards.flatMap((c) => c.variants)).filter((v) => v.isOwned).length
             const pct = s.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / s.totalCardsCount) * 100)) : 0
 
             return (

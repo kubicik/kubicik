@@ -7,7 +7,11 @@ export async function GET() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
     include: {
-      cards: { select: { variants: { select: { isOwned: true, price: true } } } },
+      subsets: {
+        include: {
+          cards: { select: { variants: { select: { isOwned: true, price: true, updatedAt: true } } } },
+        },
+      },
       tags: true,
     },
   })
@@ -19,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
-  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, isPricingEnabled, tagIds } = body
+  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, isPricingEnabled, collectBase, tagIds } = body
   if (!name || !year) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
   let slug = slugify(name + " " + year)
@@ -36,22 +40,32 @@ export async function POST(req: NextRequest) {
       totalCardsCount: Number(totalCardsCount) || 0,
       imageUrl: imageUrl || null,
       isPricingEnabled: !!isPricingEnabled,
+      collectBase: collectBase !== false,
       slug,
       tags: tagIds?.length ? { connect: (tagIds as string[]).map((id) => ({ id })) } : undefined,
     },
-    include: { cards: { select: { variants: { select: { isOwned: true, price: true } } } }, tags: true },
+    include: {
+      subsets: {
+        include: {
+          cards: { select: { variants: { select: { isOwned: true, price: true, updatedAt: true } } } },
+        },
+      },
+      tags: true,
+    },
   })
   return NextResponse.json(serialize(series), { status: 201 })
 }
 
-function serialize(s: {
+type SeriesWithSubsets = {
   id: string; name: string; year: number; sport: string; tier: string; displayMode: string
-  totalCardsCount: number; imageUrl: string | null; isPricingEnabled: boolean
+  totalCardsCount: number; imageUrl: string | null; isPricingEnabled: boolean; collectBase: boolean
   slug: string; createdAt: Date; updatedAt: Date
-  cards: { variants: { isOwned: boolean; price: number | null }[] }[]
+  subsets: { cards: { variants: { isOwned: boolean; price: number | null; updatedAt: Date }[] }[] }[]
   tags: { id: string; name: string; color: string; symbol: string; createdAt: Date; updatedAt: Date }[]
-}) {
-  const allVariants = s.cards.flatMap((c) => c.variants)
+}
+
+function serialize(s: SeriesWithSubsets) {
+  const allVariants = s.subsets.flatMap((sub) => sub.cards.flatMap((c) => c.variants))
   const ownedVariantsCount = allVariants.filter((v) => v.isOwned).length
   const totalVariantsCount = allVariants.length
   const collectionValue = s.isPricingEnabled
@@ -61,7 +75,7 @@ function serialize(s: {
   return {
     id: s.id, name: s.name, year: s.year, sport: s.sport, tier: s.tier, displayMode: s.displayMode,
     totalCardsCount: s.totalCardsCount, imageUrl: s.imageUrl, slug: s.slug,
-    isPricingEnabled: s.isPricingEnabled,
+    isPricingEnabled: s.isPricingEnabled, collectBase: s.collectBase,
     createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString(),
     ownedVariantsCount, totalVariantsCount, collectionValue,
     tags: s.tags.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() })),

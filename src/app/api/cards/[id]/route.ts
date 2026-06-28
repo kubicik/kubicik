@@ -13,5 +13,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("imageUrl" in body) data.imageUrl = body.imageUrl || null
 
   const card = await prisma.card.update({ where: { id }, data })
-  return NextResponse.json({ ...card, createdAt: card.createdAt.toISOString() })
+  return NextResponse.json({ ...card, createdAt: card.createdAt.toISOString(), updatedAt: card.updatedAt.toISOString() })
 }

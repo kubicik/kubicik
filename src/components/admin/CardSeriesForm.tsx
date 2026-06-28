@@ -21,6 +21,7 @@ export default function CardSeriesForm({ initial }: Props) {
   const [totalCardsCount, setTotalCardsCount] = useState(initial?.totalCardsCount?.toString() ?? "0")
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "")
   const [isPricingEnabled, setIsPricingEnabled] = useState(initial?.isPricingEnabled ?? false)
+  const [collectBase, setCollectBase] = useState(initial?.collectBase ?? true)
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(initial?.tags?.map((t) => t.id) ?? [])
   const [availableTags, setAvailableTags] = useState<CardTag[]>([])
   const [uploading, setUploading] = useState(false)
@@ -78,6 +79,7 @@ export default function CardSeriesForm({ initial }: Props) {
         totalCardsCount: Number(totalCardsCount),
         imageUrl: imageUrl || null,
         isPricingEnabled,
+        collectBase,
         tagIds: selectedTagIds,
       }
       const res = await fetch(isEdit ? `/api/card-series/${initial!.id}` : "/api/card-series", {
@@ -250,9 +252,28 @@ export default function CardSeriesForm({ initial }: Props) {
         </div>
       )}
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-[#3c3c43]">Sledování ceny</label>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium text-[#3c3c43]">Sbírám base set</label>
+            <p className="text-xs text-[#8e8e93] mt-0.5">Počítá base subset do celkového progresu</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCollectBase(!collectBase)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${collectBase ? "bg-[#34c759]" : "bg-[#e5e5ea]"}`}
+          >
+            <span
+              className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${collectBase ? "translate-x-5" : "translate-x-0.5"}`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium text-[#3c3c43]">Sledování ceny</label>
+            <p className="text-xs text-[#8e8e93] mt-0.5">Umožní zadávání cen a zobrazí hodnotu sbírky</p>
+          </div>
           <button
             type="button"
             onClick={() => setIsPricingEnabled(!isPricingEnabled)}
@@ -263,9 +284,6 @@ export default function CardSeriesForm({ initial }: Props) {
             />
           </button>
         </div>
-        {isPricingEnabled && (
-          <p className="mt-1.5 text-xs text-[#8e8e93]">Ceny jednotlivých karet se zadávají v sekci Správa sbírky níže.</p>
-        )}
       </div>
 
       <div>

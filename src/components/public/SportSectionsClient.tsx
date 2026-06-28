@@ -10,7 +10,7 @@ type SeriesItem = {
   isPricingEnabled: boolean
   tags: { id: string; name: string; color: string; symbol: string }[]
   updatedAt: Date; totalCardsCount: number
-  cards: { variants: { isOwned: boolean; updatedAt: Date; price: number | null }[] }[]
+  subsets: { cards: { variants: { isOwned: boolean; updatedAt: Date; price: number | null }[] }[] }[]
 }
 
 type SportGroup = {
@@ -21,7 +21,7 @@ type SportGroup = {
 }
 
 function SeriesCard({ s, now }: { s: SeriesItem; now: Date }) {
-  const allVariants = s.cards.flatMap((c) => c.variants)
+  const allVariants = s.subsets.flatMap((sub) => sub.cards.flatMap((c) => c.variants))
   const ownedCount = allVariants.filter((v) => v.isOwned).length
   const pct = s.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / s.totalCardsCount) * 100)) : 0
   const lastChanged = seriesLastChanged(s.updatedAt, allVariants.map((v) => v.updatedAt))

@@ -7,12 +7,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id: seriesId } = await params
-  const { missingNumbers }: { missingNumbers: string[] } = await req.json()
+  const { subsetId, missingNumbers }: { subsetId?: string; missingNumbers: string[] } = await req.json()
 
   const missingSet = new Set(missingNumbers.map((n) => String(n).trim()))
 
   const cards = await prisma.card.findMany({
-    where: { seriesId },
+    where: subsetId ? { subsetId } : { subset: { seriesId } },
     include: { variants: { select: { id: true } } },
   })
 

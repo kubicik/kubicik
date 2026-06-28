@@ -8,7 +8,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const series = await prisma.cardSeries.findUnique({
     where: { id },
     include: {
-      cards: { include: { variants: { orderBy: { variantName: "asc" } } } },
+      subsets: {
+        orderBy: { order: "asc" },
+        include: {
+          parallels: { orderBy: { order: "asc" } },
+          cards: {
+            include: {
+              variants: {
+                include: { parallel: true },
+                orderBy: { parallel: { order: "asc" } },
+              },
+            },
+          },
+        },
+      },
       tags: true,
     },
   })
@@ -19,13 +32,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     createdAt: series.createdAt.toISOString(),
     updatedAt: series.updatedAt.toISOString(),
     tags: series.tags.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() })),
-    cards: sortCards(series.cards).map((c) => ({
-      ...c,
-      createdAt: c.createdAt.toISOString(),
-      variants: c.variants.map((v) => ({
-        ...v,
-        createdAt: v.createdAt.toISOString(),
-        updatedAt: v.updatedAt.toISOString(),
+    subsets: series.subsets.map((sub) => ({
+      ...sub,
+      createdAt: sub.createdAt.toISOString(),
+      cards: sortCards(sub.cards).map((c) => ({
+        ...c,
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
+        variants: c.variants.map((v) => ({
+          ...v,
+          createdAt: v.createdAt.toISOString(),
+          updatedAt: v.updatedAt.toISOString(),
+        })),
       })),
     })),
   })
@@ -37,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, isPricingEnabled, tagIds } = body
+  const { name, year, sport, tier, displayMode, totalCardsCount, imageUrl, isPricingEnabled, collectBase, tagIds } = body
 
   const series = await prisma.cardSeries.update({
     where: { id },
@@ -50,6 +68,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       totalCardsCount: totalCardsCount != null ? Number(totalCardsCount) : undefined,
       imageUrl: imageUrl !== undefined ? (imageUrl || null) : undefined,
       isPricingEnabled: isPricingEnabled !== undefined ? !!isPricingEnabled : undefined,
+      collectBase: collectBase !== undefined ? !!collectBase : undefined,
       tags: tagIds !== undefined ? { set: (tagIds as string[]).map((tid) => ({ id: tid })) } : undefined,
     },
     include: { tags: true },

@@ -5,7 +5,7 @@ import CardSeriesForm from "@/components/admin/CardSeriesForm"
 import CardSeriesImport from "@/components/admin/CardSeriesImport"
 import CardVariantManager from "@/components/admin/CardVariantManager"
 import { sortCards } from "@/lib/sortCards"
-import type { CardSeries, Card } from "@/types"
+import type { CardSeries, CardSubset } from "@/types"
 
 export default async function AdminCardSeriesDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -15,7 +15,20 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     series = await prisma.cardSeries.findUnique({
       where: { id },
       include: {
-        cards: { include: { variants: { orderBy: { variantName: "asc" } } } },
+        subsets: {
+          orderBy: { order: "asc" },
+          include: {
+            parallels: { orderBy: { order: "asc" } },
+            cards: {
+              include: {
+                variants: {
+                  include: { parallel: true },
+                  orderBy: { parallel: { order: "asc" } },
+                },
+              },
+            },
+          },
+        },
         tags: true,
       },
     })
@@ -24,6 +37,8 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
   }
 
   if (!series) notFound()
+
+  const totalCards = series.subsets.reduce((sum, sub) => sum + sub.cards.length, 0)
 
   const seriesData: CardSeries = {
     id: series.id,
@@ -35,6 +50,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     totalCardsCount: series.totalCardsCount,
     imageUrl: series.imageUrl,
     isPricingEnabled: series.isPricingEnabled,
+    collectBase: series.collectBase,
     slug: series.slug,
     createdAt: series.createdAt.toISOString(),
     updatedAt: series.updatedAt.toISOString(),
@@ -44,23 +60,47 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     })),
   }
 
-  const cards: Card[] = sortCards(series.cards).map((c) => ({
-    id: c.id,
-    seriesId: c.seriesId,
-    number: c.number,
-    name: c.name,
-    order: c.order,
-    imageUrl: c.imageUrl,
-    createdAt: c.createdAt.toISOString(),
-    variants: c.variants.map((v) => ({
-      id: v.id,
-      cardId: v.cardId,
-      variantName: v.variantName,
-      limitNumber: v.limitNumber,
-      isOwned: v.isOwned,
-      price: v.price,
-      createdAt: v.createdAt.toISOString(),
-      updatedAt: v.updatedAt.toISOString(),
+  const subsets: CardSubset[] = series.subsets.map((sub) => ({
+    id: sub.id,
+    seriesId: sub.seriesId,
+    name: sub.name,
+    isSpecial: sub.isSpecial,
+    order: sub.order,
+    createdAt: sub.createdAt.toISOString(),
+    parallels: sub.parallels.map((p) => ({
+      id: p.id,
+      subsetId: p.subsetId,
+      name: p.name,
+      limitNumber: p.limitNumber,
+      isCollected: p.isCollected,
+      order: p.order,
+    })),
+    cards: sortCards(sub.cards).map((c) => ({
+      id: c.id,
+      subsetId: c.subsetId,
+      number: c.number,
+      name: c.name,
+      order: c.order,
+      imageUrl: c.imageUrl,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+      variants: c.variants.map((v) => ({
+        id: v.id,
+        cardId: v.cardId,
+        parallelId: v.parallelId,
+        parallel: v.parallel ? {
+          id: v.parallel.id,
+          subsetId: v.parallel.subsetId,
+          name: v.parallel.name,
+          limitNumber: v.parallel.limitNumber,
+          isCollected: v.parallel.isCollected,
+          order: v.parallel.order,
+        } : undefined,
+        isOwned: v.isOwned,
+        price: v.price,
+        createdAt: v.createdAt.toISOString(),
+        updatedAt: v.updatedAt.toISOString(),
+      })),
     })),
   }))
 
@@ -74,7 +114,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
         </Link>
         <div>
           <h1 className="text-2xl font-semibold text-[#1d1d1f]">{series.name}</h1>
-          <p className="text-[#8e8e93] text-sm mt-0.5">{series.year} · {series.cards.length} karet</p>
+          <p className="text-[#8e8e93] text-sm mt-0.5">{series.year} · {totalCards} karet</p>
         </div>
         <Link
           href={`/kartickar/${series.slug}`}
@@ -92,7 +132,12 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
       <div className="space-y-6">
         <CardSeriesForm initial={seriesData} />
         <CardSeriesImport seriesId={series.id} />
-        <CardVariantManager seriesId={series.id} initialCards={cards} totalCardsCount={series.totalCardsCount} isPricingEnabled={series.isPricingEnabled} />
+        <CardVariantManager
+          seriesId={series.id}
+          initialSubsets={subsets}
+          totalCardsCount={series.totalCardsCount}
+          isPricingEnabled={series.isPricingEnabled}
+        />
       </div>
     </div>
   )

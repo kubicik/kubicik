@@ -2,15 +2,46 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 
-interface VariantInput {
-  variant_name: string
-  limit_number: number | null
+// New format: array of subsets
+interface ParallelInput { name: string; limit_number: number | null }
+interface SubsetInput {
+  subset: string
+  is_special?: boolean
+  parallels: ParallelInput[]
+  cards: { number: string; name: string }[]
 }
 
-interface CardInput {
+// Old format (backward compat): flat card array
+interface LegacyCardInput {
   number: string
   name: string
-  variants: VariantInput[]
+  variants: { variant_name: string; limit_number: number | null }[]
+}
+
+function isNewFormat(body: unknown[]): body is SubsetInput[] {
+  return body.length > 0 && typeof (body[0] as Record<string, unknown>).subset === "string"
+}
+
+function legacyToNew(cards: LegacyCardInput[]): SubsetInput[] {
+  // Collect all unique variant names across all cards to form parallels
+  const parallelSet = new Map<string, number | null>()
+  for (const c of cards) {
+    for (const v of c.variants ?? []) {
+      if (v.variant_name && !parallelSet.has(v.variant_name)) {
+        parallelSet.set(v.variant_name, v.limit_number ?? null)
+      }
+    }
+  }
+  const parallels: ParallelInput[] = Array.from(parallelSet.entries()).map(([name, limit_number]) => ({
+    name,
+    limit_number,
+  }))
+  return [{
+    subset: "Base",
+    is_special: false,
+    parallels,
+    cards: cards.map((c) => ({ number: String(c.number), name: String(c.name) })),
+  }]
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,17 +53,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const series = await prisma.cardSeries.findUnique({ where: { id: seriesId } })
   if (!series) return NextResponse.json({ error: "Series not found" }, { status: 404 })
 
-  let cards: CardInput[]
+  let subsets: SubsetInput[]
   try {
     const body = await req.json()
-    cards = Array.isArray(body) ? body : body.cards
-    if (!Array.isArray(cards)) throw new Error("Expected array")
+    const arr = Array.isArray(body) ? body : body.subsets ?? body.cards
+    if (!Array.isArray(arr)) throw new Error("Expected array")
+    subsets = isNewFormat(arr) ? (arr as SubsetInput[]) : legacyToNew(arr as LegacyCardInput[])
   } catch {
-    return NextResponse.json({ error: "Invalid JSON — expected array of cards" }, { status: 400 })
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  const validCards = cards.filter((c) => c.number && c.name)
-  const total = validCards.length
+  const totalCards = subsets.reduce((sum, s) => sum + (s.cards?.length ?? 0), 0)
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -44,47 +75,86 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       let created = 0
       let updated = 0
       let variantsAdded = 0
+      let done = 0
 
       try {
-        for (let i = 0; i < validCards.length; i++) {
-          const cardInput = validCards[i]
+        for (const subsetInput of subsets) {
+          if (!subsetInput.subset || !Array.isArray(subsetInput.cards)) continue
 
-          const existingCard = await prisma.card.findUnique({
-            where: { seriesId_number: { seriesId, number: String(cardInput.number) } },
+          // Find or create the subset by name within this series
+          let subset = await prisma.cardSubset.findFirst({
+            where: { seriesId, name: subsetInput.subset },
           })
-
-          let cardId: string
-          if (existingCard) {
-            cardId = existingCard.id
-            await prisma.card.update({ where: { id: cardId }, data: { name: String(cardInput.name) } })
-            updated++
-          } else {
-            const newCard = await prisma.card.create({
-              data: { seriesId, number: String(cardInput.number), name: String(cardInput.name) },
+          if (!subset) {
+            subset = await prisma.cardSubset.create({
+              data: {
+                seriesId,
+                name: subsetInput.subset,
+                isSpecial: !!subsetInput.is_special,
+                order: 0,
+              },
             })
-            cardId = newCard.id
-            created++
           }
+          const subsetId = subset.id
 
-          for (const v of cardInput.variants ?? []) {
-            if (!v.variant_name) continue
-            const existingVariant = await prisma.cardVariant.findUnique({
-              where: { cardId_variantName: { cardId, variantName: String(v.variant_name) } },
+          // Sync parallels: find or create each parallel, then create missing CardVariant rows
+          const parallelMap = new Map<string, string>() // name → parallelId
+          for (const pInput of subsetInput.parallels ?? []) {
+            if (!pInput.name) continue
+            let parallel = await prisma.cardParallel.findFirst({
+              where: { subsetId, name: pInput.name },
             })
-            if (!existingVariant) {
-              await prisma.cardVariant.create({
+            if (!parallel) {
+              parallel = await prisma.cardParallel.create({
                 data: {
-                  cardId,
-                  variantName: String(v.variant_name),
-                  limitNumber: v.limit_number != null ? Number(v.limit_number) : null,
-                  isOwned: false,
+                  subsetId,
+                  name: pInput.name,
+                  limitNumber: pInput.limit_number != null ? Number(pInput.limit_number) : null,
+                  isCollected: true,
+                  order: parallelMap.size,
                 },
               })
-              variantsAdded++
             }
+            parallelMap.set(pInput.name, parallel.id)
           }
 
-          emit({ done: i + 1, total })
+          // Import cards
+          for (const cardInput of subsetInput.cards) {
+            if (!cardInput.number || !cardInput.name) { done++; continue }
+
+            const existingCard = await prisma.card.findUnique({
+              where: { subsetId_number: { subsetId, number: String(cardInput.number) } },
+            })
+
+            let cardId: string
+            if (existingCard) {
+              cardId = existingCard.id
+              await prisma.card.update({ where: { id: cardId }, data: { name: String(cardInput.name) } })
+              updated++
+            } else {
+              const newCard = await prisma.card.create({
+                data: { subsetId, number: String(cardInput.number), name: String(cardInput.name) },
+              })
+              cardId = newCard.id
+              created++
+            }
+
+            // Ensure CardVariant rows exist for all parallels in this subset
+            for (const [, parallelId] of parallelMap) {
+              const existingVariant = await prisma.cardVariant.findUnique({
+                where: { cardId_parallelId: { cardId, parallelId } },
+              })
+              if (!existingVariant) {
+                await prisma.cardVariant.create({
+                  data: { cardId, parallelId, isOwned: false },
+                })
+                variantsAdded++
+              }
+            }
+
+            done++
+            emit({ done, total: totalCards })
+          }
         }
 
         emit({ ok: true, created, updated, variantsAdded })

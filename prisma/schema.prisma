@@ -144,27 +144,54 @@ model CardSeries {
   totalCardsCount  Int      @default(0)
   imageUrl         String?
   isPricingEnabled Boolean  @default(false)
+  collectBase      Boolean  @default(true)
   slug             String   @unique
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  cards Card[]
-  tags  CardTag[]
+  subsets CardSubset[]
+  tags    CardTag[]
+}
+
+model CardSubset {
+  id        String     @id @default(cuid())
+  seriesId  String
+  series    CardSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  name      String     @default("Base")
+  isSpecial Boolean    @default(false)
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  parallels CardParallel[]
+  cards     Card[]
+}
+
+model CardParallel {
+  id          String     @id @default(cuid())
+  subsetId    String
+  subset      CardSubset @relation(fields: [subsetId], references: [id], onDelete: Cascade)
+  name        String
+  limitNumber Int?
+  isCollected Boolean    @default(true)
+  order       Int        @default(0)
+
+  variants CardVariant[]
 }
 
 model Card {
   id        String     @id @default(cuid())
-  seriesId  String
-  series    CardSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  subsetId  String
+  subset    CardSubset @relation(fields: [subsetId], references: [id], onDelete: Cascade)
   number    String
   name      String
   order     Int        @default(0)
   imageUrl  String?
   createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   variants CardVariant[]
 
-  @@unique([seriesId, number])
+  @@unique([subsetId, number])
 }
 
 model CardTag {
@@ -179,15 +206,15 @@ model CardTag {
 }
 
 model CardVariant {
-  id          String   @id @default(cuid())
-  cardId      String
-  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  variantName String
-  limitNumber Int?
-  isOwned     Boolean  @default(false)
-  price       Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String      @id @default(cuid())
+  cardId     String
+  card       Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  parallelId String
+  parallel   CardParallel @relation(fields: [parallelId], references: [id], onDelete: Cascade)
+  isOwned    Boolean     @default(false)
+  price      Float?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
-  @@unique([cardId, variantName])
+  @@unique([cardId, parallelId])
 }

@@ -13,7 +13,11 @@ export default async function KartickarPage() {
   const series = await prisma.cardSeries.findMany({
     orderBy: [{ year: "desc" }, { name: "asc" }],
     include: {
-      cards: { select: { variants: { select: { isOwned: true, updatedAt: true, price: true } } } },
+      subsets: {
+        include: {
+          cards: { select: { variants: { select: { isOwned: true, updatedAt: true, price: true } } } },
+        },
+      },
       tags: true,
     },
   })

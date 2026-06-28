@@ -4,7 +4,7 @@ import Link from "next/link"
 import CardChecklist from "@/components/public/CardChecklist"
 import { sortCards } from "@/lib/sortCards"
 import { relativeTime, seriesLastChanged } from "@/lib/relativeTime"
-import type { Card } from "@/types"
+import type { CardSubset } from "@/types"
 
 export const revalidate = 60
 
@@ -22,13 +22,26 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
   const series = await prisma.cardSeries.findUnique({
     where: { slug },
     include: {
-      cards: { include: { variants: { orderBy: { variantName: "asc" } } } },
+      subsets: {
+        orderBy: { order: "asc" },
+        include: {
+          parallels: { orderBy: { order: "asc" } },
+          cards: {
+            include: {
+              variants: {
+                include: { parallel: true },
+                orderBy: { parallel: { order: "asc" } },
+              },
+            },
+          },
+        },
+      },
       tags: true,
     },
   })
   if (!series) notFound()
 
-  const allVariants = series.cards.flatMap((c) => c.variants)
+  const allVariants = series.subsets.flatMap((sub) => sub.cards.flatMap((c) => c.variants))
   const ownedCount = allVariants.filter((v) => v.isOwned).length
   const pct = series.totalCardsCount > 0 ? Math.min(100, Math.round((ownedCount / series.totalCardsCount) * 100)) : 0
   const lastChanged = seriesLastChanged(series.updatedAt, allVariants.map((v) => v.updatedAt))
@@ -40,27 +53,55 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     ? Math.round(allVariants.reduce((sum, v) => sum + (v.price ?? 0), 0))
     : null
 
-  const cards: Card[] = sortCards(series.cards).map((c) => ({
-    id: c.id,
-    seriesId: c.seriesId,
-    number: c.number,
-    name: c.name,
-    order: c.order,
-    imageUrl: c.imageUrl,
-    createdAt: c.createdAt.toISOString(),
-    variants: c.variants.map((v) => ({
-      id: v.id,
-      cardId: v.cardId,
-      variantName: v.variantName,
-      limitNumber: v.limitNumber,
-      isOwned: v.isOwned,
-      price: v.price,
-      createdAt: v.createdAt.toISOString(),
-      updatedAt: v.updatedAt.toISOString(),
+  // Per-subset progress for the header
+  const subsetStats = series.subsets.map((sub) => {
+    const subVariants = sub.cards.flatMap((c) => c.variants)
+    const owned = subVariants.filter((v) => v.isOwned).length
+    const total = subVariants.length
+    const pctSub = total > 0 ? Math.min(100, Math.round((owned / total) * 100)) : 0
+    return { id: sub.id, name: sub.name, isSpecial: sub.isSpecial, owned, total, pct: pctSub }
+  }).filter((s) => {
+    if (s.isSpecial) return true
+    return series.collectBase
+  })
+
+  const subsets: CardSubset[] = series.subsets.map((sub) => ({
+    id: sub.id,
+    seriesId: sub.seriesId,
+    name: sub.name,
+    isSpecial: sub.isSpecial,
+    order: sub.order,
+    createdAt: sub.createdAt.toISOString(),
+    parallels: sub.parallels.map((p) => ({
+      id: p.id,
+      subsetId: p.subsetId,
+      name: p.name,
+      limitNumber: p.limitNumber,
+      isCollected: p.isCollected,
+      order: p.order,
+    })),
+    cards: sortCards(sub.cards).map((c) => ({
+      id: c.id,
+      subsetId: c.subsetId,
+      number: c.number,
+      name: c.name,
+      order: c.order,
+      imageUrl: c.imageUrl,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+      variants: c.variants.map((v) => ({
+        id: v.id,
+        cardId: v.cardId,
+        parallelId: v.parallelId,
+        isOwned: v.isOwned,
+        price: v.price,
+        createdAt: v.createdAt.toISOString(),
+        updatedAt: v.updatedAt.toISOString(),
+      })),
     })),
   }))
 
-  const hasCardImages = cards.some((c) => c.imageUrl)
+  const hasCardImages = subsets.flatMap((s) => s.cards ?? []).some((c) => c.imageUrl)
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -137,10 +178,30 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
             )}
           </div>
         </div>
+
+        {/* Per-subset collection status */}
+        {subsetStats.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {subsetStats.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center gap-2 px-3 py-2 bg-[#f9f9fb] border border-[#e5e5ea] rounded-xl text-sm"
+              >
+                <span>{s.isSpecial ? "✨" : "📦"}</span>
+                <span className="font-medium text-[#1d1d1f]">{s.name}</span>
+                <span className="text-[#8e8e93]">—</span>
+                <span className={`font-semibold ${s.pct === 100 ? "text-[#34c759]" : s.pct > 50 ? "text-[#007aff]" : "text-[#ff9f0a]"}`}>
+                  {s.owned}/{s.total}
+                </span>
+                <span className="text-xs text-[#c7c7cc]">({s.pct}%)</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <CardChecklist
-        cards={cards}
+        subsets={subsets}
         displayMode={series.displayMode as "missing_only" | "full_collection"}
         showImages={series.tier === "premium" && hasCardImages}
       />

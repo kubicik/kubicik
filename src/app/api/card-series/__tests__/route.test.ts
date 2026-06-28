@@ -43,10 +43,11 @@ function makeSeriesRow(overrides = {}) {
     totalCardsCount: 500,
     imageUrl: null,
     isPricingEnabled: false,
+    collectBase: true,
     slug: "panini-2026",
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
-    cards: [],
+    subsets: [],
     tags: [],
     ...overrides,
   }
@@ -72,9 +73,13 @@ describe("GET /api/card-series", () => {
   it("returns serialized series list with owned/total counts", async () => {
     mockCardSeries.findMany.mockResolvedValue([
       makeSeriesRow({
-        cards: [
-          { variants: [{ isOwned: true }, { isOwned: false }] },
-          { variants: [{ isOwned: true }] },
+        subsets: [
+          {
+            cards: [
+              { variants: [{ isOwned: true, price: null, updatedAt: new Date() }, { isOwned: false, price: null, updatedAt: new Date() }] },
+              { variants: [{ isOwned: true, price: null, updatedAt: new Date() }] },
+            ],
+          },
         ],
       }),
     ])

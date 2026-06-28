@@ -53,10 +53,11 @@ function makeSeriesRow(overrides = {}) {
     totalCardsCount: 500,
     imageUrl: null,
     isPricingEnabled: false,
+    collectBase: true,
     slug: "panini-2026",
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
-    cards: [],
+    subsets: [],
     tags: [],
     ...overrides,
   }
@@ -88,22 +89,29 @@ describe("GET /api/card-series/[id]", () => {
     expect(body.createdAt).toBe("2026-01-01T00:00:00.000Z")
   })
 
-  it("serializes nested card and variant dates", async () => {
+  it("serializes nested subset, card and variant dates", async () => {
     mockCardSeries.findUnique.mockResolvedValue(
       makeSeriesRow({
-        cards: [{
-          id: "c1", seriesId: "s1", number: "1", name: "Haaland", order: 0, imageUrl: null,
+        subsets: [{
+          id: "sub1", seriesId: "s1", name: "Base", isSpecial: false, order: 0,
           createdAt: new Date("2026-01-01"),
-          variants: [{
-            id: "v1", cardId: "c1", variantName: "Base", limitNumber: null, isOwned: true,
-            createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-02"),
+          parallels: [],
+          cards: [{
+            id: "c1", subsetId: "sub1", number: "1", name: "Haaland", order: 0, imageUrl: null,
+            createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01"),
+            variants: [{
+              id: "v1", cardId: "c1", parallelId: "p1", isOwned: true, price: null,
+              parallel: { id: "p1", subsetId: "sub1", name: "Base", limitNumber: null, isCollected: true, order: 0 },
+              createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-02"),
+            }],
           }],
         }],
       })
     )
     const body = await (await GET(makeGetReq("s1"), params("s1"))).json()
-    expect(body.cards[0].createdAt).toBe("2026-01-01T00:00:00.000Z")
-    expect(body.cards[0].variants[0].updatedAt).toBe("2026-01-02T00:00:00.000Z")
+    expect(body.subsets[0].createdAt).toBe("2026-01-01T00:00:00.000Z")
+    expect(body.subsets[0].cards[0].createdAt).toBe("2026-01-01T00:00:00.000Z")
+    expect(body.subsets[0].cards[0].variants[0].updatedAt).toBe("2026-01-02T00:00:00.000Z")
   })
 
   it("includes tags with serialized dates", async () => {

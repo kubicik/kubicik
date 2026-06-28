@@ -209,25 +209,47 @@ Public pages use `export const revalidate = 60` for 1-minute ISR. The trip detai
 
 ### Kartičky (Card Collection)
 
-Four models: `CardSeries`, `Card`, `CardVariant`, `CardTag`. Key design decisions:
+Six models: `CardSeries` → `CardSubset` → `CardParallel` + `Card` → `CardVariant`, plus `CardTag`. Hierarchy:
+
+```
+CardSeries
+  └── CardSubset (base or special, e.g. "Base", "Gold Inserts")
+        ├── CardParallel (version types, e.g. "Base", "Blue /199")
+        └── Card (individual cards, unique number per subset)
+              └── CardVariant (one per CardParallel, tracks isOwned + price)
+```
+
+Key design decisions:
 
 - `CardSeries.displayMode` — `"missing_only"` | `"full_collection"`. Controls the public checklist view.
-- `CardSeries.totalCardsCount` — user-set total (e.g. 500 base cards). Used as denominator for progress bar percentage: `ownedVariants / totalCardsCount`.
-- `CardSeries.isPricingEnabled` — when true, per-card prices are shown in `CardVariantManager` and collection value is surfaced on public pages.
-- `CardSeries.tier` — `"premium"` | `"regular"`. Premium series show card images in `CardChecklist` (when `showImages` prop is set).
-- `Card.number` — card number/code (string, e.g. `"G-12"`). Unique per series: `@@unique([seriesId, number])`.
-- `Card.imageUrl` — optional card image. Uploaded via `PATCH /api/cards/[id]` with `{ imageUrl }`, using upload type `"cards"`. Shown as gallery on public detail for premium series.
-- `Card.price Float?` — individual card value in Kč. Set per-card in `CardVariantManager` (auto-saved on blur). Collection value = `Σ(card.price × ownedVariantCount)`.
-- `CardVariant` — represents one version of a card (Base, Red /99, Gold /25). `limitNumber` is nullable; `isOwned` is toggled via `PUT /api/card-variants/[id]`.
-- `CardTag` — tag číselník with `name`, `color` (hex), `symbol` (emoji). Implicit M2M to `CardSeries` via join table `_CardSeriesToCardTag`. CRUD at `/api/card-tags` and `/admin/kartickar/tags`.
+- `CardSeries.totalCardsCount` — user-set denominator for overall progress bar.
+- `CardSeries.isPricingEnabled` — when true, per-variant prices shown in `CardVariantManager`.
+- `CardSeries.collectBase` — whether the base subset counts toward collection progress.
+- `CardSeries.tier` — `"premium"` | `"regular"`. Premium series show card images in `CardChecklist`.
+- `CardSubset.isSpecial` — false = base set, true = special insert set. Specials are always collected.
+- `CardSubset.name` — e.g. "Base", "Gold Inserts", "Prizm Signatures".
+- `CardParallel.isCollected` — whether this version is being collected (e.g. skip Base but collect Blue).
+- `CardParallel.limitNumber` — nullable (unlimited = null, /199 = 199).
+- `Card.number` — unique per subset: `@@unique([subsetId, number])`.
+- `Card.imageUrl` — optional, uploaded via `PATCH /api/cards/[id]`.
+- `CardVariant` — one per (Card × CardParallel). `isOwned` toggled via `PUT /api/card-variants/[id]`.
+- `CardTag` — tag číselník. Implicit M2M to `CardSeries` via join table. CRUD at `/api/card-tags`.
 
-**AI Import flow** — `POST /api/card-series/[id]/import` accepts a JSON array of `{ number, name, variants: [{ variant_name, limit_number }] }`. If a card with the same number already exists, only new variants are added (no duplicates). The admin UI shows a copyable AI prompt; user processes raw checklist text in external AI, pastes resulting JSON, submits.
+**AI Import flow** — `POST /api/card-series/[id]/import` accepts new format:
+```json
+[{ "subset": "Base", "is_special": false,
+   "parallels": [{"name": "Base", "limit_number": null}, {"name": "Blue", "limit_number": 199}],
+   "cards": [{"number": "1", "name": "Haaland"}] }]
+```
+Old flat format `[{number, name, variants:[{variant_name, limit_number}]}]` is auto-converted to Base subset. Find-or-create semantics for all models.
 
-**Bulk-own shortcut** — `POST /api/card-series/[id]/bulk-own` accepts `{ missingNumbers: string[] }`. All variants of cards NOT in `missingNumbers` are set to `isOwned = true`; all variants of cards IN `missingNumbers` are set to `false`. Used by the text-field shortcut in `CardVariantManager`.
+**Adding a parallel** — `POST /api/card-parallels` creates the parallel and auto-creates `CardVariant` rows (isOwned=false) for all existing cards in the subset.
 
-**Public routes**: `/kartickar` (sport-tab list with progress bars and collection values), `/kartickar/[slug]` (detail with checklist + optional image gallery).
+**Bulk-own shortcut** — `POST /api/card-series/[id]/bulk-own` accepts `{ subsetId?: string, missingNumbers: string[] }`. Applied per-subset.
 
-**Admin routes**: `/admin/kartickar` (list + delete), `/admin/kartickar/new` (create), `/admin/kartickar/[id]` (edit series + AI import + variant manager with pricing), `/admin/kartickar/tags` (CardTag CRUD).
+**Public routes**: `/kartickar` (sport-tab list), `/kartickar/[slug]` (detail with per-subset status header + checklist).
+
+**Admin routes**: `/admin/kartickar` (list + delete), `/admin/kartickar/new` (create), `/admin/kartickar/[id]` (edit series + AI import + variant manager with subset/parallel CRUD), `/admin/kartickar/tags` (CardTag CRUD).
 
 **Progress calculation**: `Math.min(100, Math.round(ownedVariants / totalCardsCount * 100))`. Color thresholds: green at 100%, blue above 50%, amber below.
 
