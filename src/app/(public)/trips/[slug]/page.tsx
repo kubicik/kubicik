@@ -199,7 +199,7 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
       </div>
 
       {/* ─── DAYS ─────────────────────────────────────────────────── */}
-      {stops.length > 0 && <TripDays stops={stops} />}
+      {stops.length > 0 && <TripDays stops={stops} expandAllDays={trip.expandAllDays} />}
 
       {/* ─── TIPS ─────────────────────────────────────────────────── */}
       {trip.tips && (

@@ -43,6 +43,7 @@ model Trip {
   tripType         String?
   tips             String?
   coverPhotoFocus  String?
+  expandAllDays    Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -127,11 +127,13 @@ function formatDay(dateStr: string): string {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-interface Props { stops: Stop[] }
+interface Props { stops: Stop[]; expandAllDays?: boolean }
 
-export default function TripDays({ stops }: Props) {
+export default function TripDays({ stops, expandAllDays = false }: Props) {
   const days = groupByDay(stops)
-  const [openDay, setOpenDay] = useState<number | null>(0)
+  const [openDays, setOpenDays] = useState<Set<number>>(
+    () => new Set(expandAllDays ? days.map((_, i) => i) : [0])
+  )
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const allPhotos = useMemo(
@@ -147,10 +149,11 @@ export default function TripDays({ stops }: Props) {
   function handleToggle(e: React.MouseEvent<HTMLButtonElement>, i: number) {
     const btn = e.currentTarget
     const topBefore = btn.getBoundingClientRect().top
-    setOpenDay(openDay === i ? null : i)
-    // After React re-renders (double rAF to wait for paint), compensate for the
-    // layout shift caused by the previously-open day collapsing so the clicked
-    // header stays at the same viewport position.
+    setOpenDays(prev => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i); else next.add(i)
+      return next
+    })
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.scrollBy(0, btn.getBoundingClientRect().top - topBefore)
@@ -169,7 +172,7 @@ export default function TripDays({ stops }: Props) {
 
         <div className="space-y-3">
           {days.map((day, i) => {
-            const isOpen = openDay === i
+            const isOpen = openDays.has(i)
             const dayPhotos = day.stops.flatMap((s) => s.photos ?? []).slice(0, 4)
             const route = day.stops.map((s) => s.title).join(" → ")
             const dayTags: Tag[] = day.stops.flatMap((s) => parseTags(s.tags))

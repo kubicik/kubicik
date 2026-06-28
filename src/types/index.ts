@@ -131,6 +131,7 @@ export interface Trip {
   country: string | null
   tripType: string | null
   tips: string | null
+  expandAllDays: boolean
   createdAt: string
   updatedAt: string
   stops?: Stop[]

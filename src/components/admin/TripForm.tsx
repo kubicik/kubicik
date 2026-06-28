@@ -198,6 +198,7 @@ interface TripData {
   coverPhotoFocus: Focus
   participants: string[]
   published: boolean
+  expandAllDays: boolean
   country: string
   tripType: string
   tips: { logistika: string[]; pozor: string[] }
@@ -231,6 +232,7 @@ export default function TripForm({ initial }: Props) {
   const [participants, setParticipants] = useState<string[]>(initial?.participants ?? [])
   const [participantSuggestions, setParticipantSuggestions] = useState<string[]>([])
   const [published, setPublished] = useState(initial?.published ?? false)
+  const [expandAllDays, setExpandAllDays] = useState(initial?.expandAllDays ?? false)
   const [country, setCountry] = useState(initial?.country ?? "")
   const [tripType, setTripType] = useState(initial?.tripType ?? "")
   const [tipsLogistika, setTipsLogistika] = useState(
@@ -285,6 +287,7 @@ export default function TripForm({ initial }: Props) {
         coverPhotoFocus: coverPhoto ? JSON.stringify(coverPhotoFocus) : null,
         participants,
         published,
+        expandAllDays,
         country: country || null,
         tripType: tripType || null,
         tips,
@@ -473,8 +476,8 @@ export default function TripForm({ initial }: Props) {
         </div>
       </div>
 
-      {/* Published */}
-      <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6">
+      {/* Published + presentation settings */}
+      <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
         <label className="flex items-center justify-between cursor-pointer">
           <div>
             <p className="font-medium text-[#1d1d1f] text-sm">Publikovat výlet</p>
@@ -487,6 +490,20 @@ export default function TripForm({ initial }: Props) {
             <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${published ? "translate-x-5.5" : "translate-x-0.5"}`} />
           </div>
         </label>
+        <div className="border-t border-[#f2f2f7] pt-4">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div>
+              <p className="font-medium text-[#1d1d1f] text-sm">Rozbalit všechny dny</p>
+              <p className="text-[#8e8e93] text-xs mt-0.5">Sekce „Den po dni" se na webu zobrazí celá rozbalená</p>
+            </div>
+            <div
+              onClick={() => setExpandAllDays(!expandAllDays)}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${expandAllDays ? "bg-[#007aff]" : "bg-[#e5e5ea]"}`}
+            >
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${expandAllDays ? "translate-x-5.5" : "translate-x-0.5"}`} />
+            </div>
+          </label>
+        </div>
       </div>
 
       {/* Submit */}

@@ -74,6 +74,7 @@ export default async function EditTripPage({ params }: { params: Promise<{ id: s
           })(),
           participants,
           published: trip.published,
+          expandAllDays: trip.expandAllDays,
           country: trip.country ?? "",
           tripType: trip.tripType ?? "",
           tips: (() => {
