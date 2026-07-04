@@ -66,6 +66,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     name: sub.name,
     isSpecial: sub.isSpecial,
     isHidden: sub.isHidden,
+    imageUrl: sub.imageUrl,
     order: sub.order,
     createdAt: sub.createdAt.toISOString(),
     parallels: sub.parallels.map((p) => ({

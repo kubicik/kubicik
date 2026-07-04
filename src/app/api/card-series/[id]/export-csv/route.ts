@@ -8,14 +8,19 @@ function csvEscape(v: string | null | undefined): string {
   return s
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+function sanitizeFilename(s: string) {
+  return s.replace(/[^a-zA-Z0-9áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ ]/g, "_")
+}
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const subsetId = new URL(req.url).searchParams.get("subsetId") || undefined
 
   const series = await prisma.cardSeries.findUnique({
     where: { id },
     include: {
       subsets: {
-        where: { isHidden: false },
+        where: { isHidden: false, ...(subsetId ? { id: subsetId } : {}) },
         orderBy: { order: "asc" },
         include: {
           parallels: { where: { isCollected: true }, orderBy: { order: "asc" } },
@@ -31,7 +36,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!series) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const rows: string[] = []
-  // BOM for Excel UTF-8
   rows.push("﻿Subset,Číslo,Jméno,Klub,Paralela,Limit,Vlastní")
 
   for (const subset of series.subsets) {
@@ -60,10 +64,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  const csv = rows.join("\r\n")
-  const filename = `${series.name.replace(/[^a-zA-Z0-9áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ ]/g, "_")}-sbírka.csv`
+  const subsetSuffix = subsetId && series.subsets.length === 1 ? `-${sanitizeFilename(series.subsets[0].name)}` : ""
+  const filename = `${sanitizeFilename(series.name)}${subsetSuffix}-sbírka.csv`
 
-  return new NextResponse(csv, {
+  return new NextResponse(rows.join("\r\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,

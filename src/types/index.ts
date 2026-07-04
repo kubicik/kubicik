@@ -110,6 +110,7 @@ export interface CardSubset {
   name: string
   isSpecial: boolean
   isHidden: boolean
+  imageUrl: string | null
   order: number
   createdAt: string
   parallels?: CardParallel[]

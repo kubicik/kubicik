@@ -73,6 +73,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     name: sub.name,
     isSpecial: sub.isSpecial,
     isHidden: false,
+    imageUrl: sub.imageUrl,
     order: sub.order,
     createdAt: sub.createdAt.toISOString(),
     parallels: sub.parallels.map((p) => ({
@@ -220,6 +221,7 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
       </div>
 
       <CardChecklist
+        seriesId={series.id}
         subsets={subsets}
         displayMode={series.displayMode as "missing_only" | "full_collection"}
         showImages={series.tier === "premium" && hasCardImages}

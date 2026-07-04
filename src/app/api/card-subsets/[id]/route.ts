@@ -7,7 +7,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
-  const { name, isSpecial, isHidden, order } = await req.json()
+  const { name, isSpecial, isHidden, imageUrl, order } = await req.json()
 
   const subset = await prisma.cardSubset.update({
     where: { id },
@@ -15,6 +15,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       name: name ?? undefined,
       isSpecial: isSpecial !== undefined ? !!isSpecial : undefined,
       isHidden: isHidden !== undefined ? !!isHidden : undefined,
+      imageUrl: imageUrl !== undefined ? (imageUrl || null) : undefined,
       order: order != null ? Number(order) : undefined,
     },
   })

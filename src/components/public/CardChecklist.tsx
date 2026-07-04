@@ -4,6 +4,7 @@ import { useState } from "react"
 import type { CardSubset, Card, CardVariant } from "@/types"
 
 interface Props {
+  seriesId: string
   subsets: CardSubset[]
   displayMode: "missing_only" | "full_collection"
   showImages?: boolean
@@ -14,7 +15,7 @@ function bestImage(card: Card): string | null {
   return card.variants?.find((v) => v.imageUrl)?.imageUrl ?? null
 }
 
-export default function CardChecklist({ subsets, displayMode, showImages }: Props) {
+export default function CardChecklist({ seriesId, subsets, displayMode, showImages }: Props) {
   const [search, setSearch] = useState("")
 
   const allCards = subsets.flatMap((sub) => sub.cards ?? [])
@@ -87,7 +88,12 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
         return (
           <div key={subset.id}>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-base">{subset.isSpecial ? "✨" : "📦"}</span>
+              {subset.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={subset.imageUrl} alt={subset.name} className="w-7 h-7 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0" />
+              ) : (
+                <span className="text-base">{subset.isSpecial ? "✨" : "📦"}</span>
+              )}
               <h3 className="text-sm font-semibold text-[#3c3c43]">{subset.name}</h3>
               {parallels.length > 1 && (
                 <>
@@ -95,6 +101,17 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
                   <span className="text-xs text-[#8e8e93]">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</span>
                 </>
               )}
+              <a
+                href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
+                download
+                className="ml-auto flex-shrink-0 flex items-center gap-1 text-xs text-[#8e8e93] hover:text-[#007aff] transition-colors"
+                title="Exportovat tento subset"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                CSV
+              </a>
             </div>
 
             {displayMode === "missing_only" && (

@@ -436,6 +436,7 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
           onDeleteSubset={() => deleteSubset(subset.id)}
           onToggleSubsetSpecial={(v) => toggleSubsetSpecial(subset.id, v)}
           onToggleSubsetHidden={(v) => toggleSubsetHidden(subset.id, v)}
+          onSubsetImageUpdate={(url) => setSubsets((prev) => prev.map((s) => s.id === subset.id ? { ...s, imageUrl: url } : s))}
           onImportComplete={reloadSubsets}
           onStartAddParallel={() => { setAddParallelSubsetId(subset.id); setNewParallelName(""); setNewParallelLimit("") }}
           onNewParallelNameChange={setNewParallelName}
@@ -540,6 +541,7 @@ interface SubsetSectionProps {
   onDeleteSubset: () => void
   onToggleSubsetSpecial: (newIsSpecial: boolean) => void
   onToggleSubsetHidden: (newIsHidden: boolean) => void
+  onSubsetImageUpdate: (imageUrl: string | null) => void
   onImportComplete: () => void
   onStartAddParallel: () => void
   onNewParallelNameChange: (v: string) => void
@@ -562,12 +564,45 @@ function SubsetSection({
   addingParallel, editingParallelId, editParallelName, editParallelLimit,
   onSearchChange, onMissingChange, onBulkOwn, onOwnChange, onQuickOwn, onToggleVariant, onPriceChange, onPriceBlur,
   onCardUpdated, onCardDeleted, onEditSubset, onSaveSubsetName, onEditSubsetName, onCancelEditSubset,
-  onDeleteSubset, onToggleSubsetSpecial, onToggleSubsetHidden, onImportComplete, onStartAddParallel, onNewParallelNameChange,
+  onDeleteSubset, onToggleSubsetSpecial, onToggleSubsetHidden, onSubsetImageUpdate, onImportComplete, onStartAddParallel, onNewParallelNameChange,
   onNewParallelLimitChange, onCreateParallel, onCancelAddParallel, onToggleParallelCollected, onStartEditParallel,
   onEditParallelNameChange, onEditParallelLimitChange, onSaveParallel, onCancelEditParallel, onDeleteParallel,
 }: SubsetSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
+
+  async function uploadSubsetImage(file: File) {
+    setImageUploading(true)
+    try {
+      const compressed = await compressImage(file, "cards")
+      const fd = new FormData()
+      fd.append("file", compressed)
+      fd.append("type", "cards")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Upload failed")
+      await fetch(`/api/card-subsets/${subset.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: data.url }),
+      })
+      onSubsetImageUpdate(data.url as string)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Chyba uploadu")
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  async function removeSubsetImage() {
+    await fetch(`/api/card-subsets/${subset.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: null }),
+    })
+    onSubsetImageUpdate(null)
+  }
 
   const isEditingThis = editingSubsetId === subset.id
   const isAddingParallelHere = addParallelSubsetId === subset.id
@@ -605,7 +640,33 @@ function SubsetSection({
             </svg>
           </button>
 
-          <span className="text-base">{subset.isSpecial ? "✨" : "📦"}</span>
+          {/* Subset thumbnail */}
+          <div className="flex items-center gap-1 group/img">
+            {subset.imageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={subset.imageUrl} alt={subset.name} className="w-7 h-7 object-cover rounded border border-[#e5e5ea]" />
+                <button
+                  onClick={removeSubsetImage}
+                  className="opacity-0 group-hover/img:opacity-100 p-0.5 text-[#c7c7cc] hover:text-[#ff3b30] transition-all"
+                  title="Odebrat náhled"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <label className={`p-1 rounded cursor-pointer transition-colors ${imageUploading ? "opacity-50 pointer-events-none" : "text-[#c7c7cc] hover:text-[#007aff]"}`} title="Nahrát náhled subsetu">
+                {imageUploading ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                ) : (
+                  <span className="text-base">{subset.isSpecial ? "✨" : "📦"}</span>
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSubsetImage(f) }} disabled={imageUploading} />
+              </label>
+            )}
+          </div>
 
           {isEditingThis ? (
             <div className="flex items-center gap-2 flex-1">

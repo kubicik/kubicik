@@ -160,6 +160,7 @@ model CardSubset {
   name      String     @default("Base")
   isSpecial Boolean    @default(false)
   isHidden  Boolean    @default(false)
+  imageUrl  String?
   order     Int        @default(0)
   createdAt DateTime   @default(now())
 
