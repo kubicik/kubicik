@@ -86,6 +86,7 @@ export interface CardVariant {
   parallel?: CardParallel
   isOwned: boolean
   price: number | null
+  imageUrl: string | null
   createdAt: string
   updatedAt: string
 }
@@ -108,6 +109,7 @@ export interface CardSubset {
   seriesId: string
   name: string
   isSpecial: boolean
+  isHidden: boolean
   order: number
   createdAt: string
   parallels?: CardParallel[]

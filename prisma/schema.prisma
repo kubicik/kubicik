@@ -159,6 +159,7 @@ model CardSubset {
   series    CardSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   name      String     @default("Base")
   isSpecial Boolean    @default(false)
+  isHidden  Boolean    @default(false)
   order     Int        @default(0)
   createdAt DateTime   @default(now())
 
@@ -214,6 +215,7 @@ model CardVariant {
   parallel   CardParallel @relation(fields: [parallelId], references: [id], onDelete: Cascade)
   isOwned    Boolean     @default(false)
   price      Float?
+  imageUrl   String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 

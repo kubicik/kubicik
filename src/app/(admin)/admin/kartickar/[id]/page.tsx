@@ -65,6 +65,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
     seriesId: sub.seriesId,
     name: sub.name,
     isSpecial: sub.isSpecial,
+    isHidden: sub.isHidden,
     order: sub.order,
     createdAt: sub.createdAt.toISOString(),
     parallels: sub.parallels.map((p) => ({
@@ -99,6 +100,7 @@ export default async function AdminCardSeriesDetailPage({ params }: { params: Pr
         } : undefined,
         isOwned: v.isOwned,
         price: v.price,
+        imageUrl: v.imageUrl,
         createdAt: v.createdAt.toISOString(),
         updatedAt: v.updatedAt.toISOString(),
       })),

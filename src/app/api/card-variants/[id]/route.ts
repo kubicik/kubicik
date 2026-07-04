@@ -9,9 +9,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
 
-  const data: { isOwned?: boolean; price?: number | null } = {}
+  const data: { isOwned?: boolean; price?: number | null; imageUrl?: string | null } = {}
   if ("isOwned" in body) data.isOwned = Boolean(body.isOwned)
   if ("price" in body) data.price = body.price != null ? Number(body.price) : null
+  if ("imageUrl" in body) data.imageUrl = body.imageUrl || null
 
   const variant = await prisma.cardVariant.update({
     where: { id },

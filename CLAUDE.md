@@ -34,6 +34,9 @@ AUTH_SECRET=<random-string>         # NextAuth JWT secret
 BLOB_READ_WRITE_TOKEN=...           # Vercel Blob (production uploads)
 YOUTUBE_API_KEY=AIza...             # YouTube Data API v3 key (for match video search)
 RESEND_API_KEY=re_...               # Resend email API (password reset); if absent, reset URL is logged to console
+# Injected at build time by next.config.ts — do not set manually:
+NEXT_PUBLIC_GIT_SHA=...             # VERCEL_GIT_COMMIT_SHA[:7], "local" in dev
+NEXT_PUBLIC_BUILD_TIME=...          # new Date().toISOString() at build; shown in AdminSidebar footer
 ```
 
 `DATABASE_URL` has a hardcoded fallback to `file:<cwd>/dev.db` in `prisma.config.ts`, `src/lib/prisma.ts`, and `src/auth.ts`, so local dev works without `.env`.
@@ -231,9 +234,15 @@ Key design decisions:
 - `CardParallel.isCollected` — whether this version is being collected (e.g. skip Base but collect Blue).
 - `CardParallel.limitNumber` — nullable (unlimited = null, /199 = 199).
 - `Card.number` — unique per subset: `@@unique([subsetId, number])`.
-- `Card.imageUrl` — optional, uploaded via `PATCH /api/cards/[id]`.
+- `Card.imageUrl` — optional card-level image. `PATCH /api/cards/[id]` also accepts `name` and `number` (returns 409 on duplicate number). `DELETE /api/cards/[id]` deletes the card and cascades to its variants. Inline editing (name, number, club) and deletion is available directly in `CardVariantManager`.
+- `CardVariant.imageUrl` — optional per-variant image, uploaded/removed via `PUT /api/card-variants/[id]` with `{ imageUrl }`. Takes priority in display: `bestImage(card)` in `CardChecklist.tsx` returns the card-level image if present, otherwise falls back to the first variant that has one.
 - `CardVariant` — one per (Card × CardParallel). `isOwned` toggled via `PUT /api/card-variants/[id]`.
+- `CardSubset.isHidden` — when true, the subset is excluded from the public checklist and CSV export, but remains fully editable in admin. Toggle via the eye icon in `CardVariantManager`; stored as `isHidden` boolean, persisted via `PUT /api/card-subsets/[id]`.
 - `CardTag` — tag číselník. Implicit M2M to `CardSeries` via join table. CRUD at `/api/card-tags`.
+
+**Public checklist display** — when a subset has only one collected parallel (i.e., no multi-parallel setup), the parallel name badge and subtitle are hidden — the ✓/✗ icon on each card row is sufficient.
+
+**CSV export** — `GET /api/card-series/[id]/export-csv` generates a UTF-8 CSV (Excel-compatible, with BOM) with columns: Subset, Číslo, Jméno, Klub, Paralela, Limit, Vlastní. Excludes hidden subsets. Linked from the public detail page as "Export XLS".
 
 **AI Import flow** — `POST /api/card-series/[id]/import` accepts new format:
 ```json
@@ -245,7 +254,7 @@ Old flat format `[{number, name, variants:[{variant_name, limit_number}]}]` is a
 
 **Adding a parallel** — `POST /api/card-parallels` creates the parallel and auto-creates `CardVariant` rows (isOwned=false) for all existing cards in the subset.
 
-**Bulk-own shortcut** — `POST /api/card-series/[id]/bulk-own` accepts `{ subsetId?: string, missingNumbers: string[] }`. Applied per-subset.
+**Bulk-own shortcut** — `POST /api/card-series/[id]/bulk-own` accepts `{ subsetId?: string, missingNumbers: string[], mode?: "missing" | "own" }`. Default mode `"missing"`: marks the listed numbers as not-owned and all others as owned (full overwrite). Mode `"own"`: marks only the listed numbers as owned without touching anything else. The admin UI has two sections — "Označit jako vlastní" (mode own, green button) and "Přepsat chybějící" (mode missing, blue button).
 
 **Public routes**: `/kartickar` (sport-tab list), `/kartickar/[slug]` (detail with per-subset status header + checklist).
 

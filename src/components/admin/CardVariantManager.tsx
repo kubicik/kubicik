@@ -16,7 +16,6 @@ interface Props {
 export default function CardVariantManager({ seriesId, initialSubsets, totalCardsCount, isPricingEnabled }: Props) {
   const [subsets, setSubsets] = useState<CardSubset[]>(initialSubsets)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
-  const [uploadingCardId, setUploadingCardId] = useState<string | null>(null)
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       initialSubsets.flatMap((sub) => (sub.cards ?? []).flatMap((c) => c.variants ?? []))
@@ -51,6 +50,9 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
   const [missingInputs, setMissingInputs] = useState<Record<string, string>>({})
   const [bulkLoading, setBulkLoading] = useState<Record<string, boolean>>({})
   const [bulkResult, setBulkResult] = useState<Record<string, string>>({})
+  const [ownInputs, setOwnInputs] = useState<Record<string, string>>({})
+  const [ownLoading, setOwnLoading] = useState<Record<string, boolean>>({})
+  const [ownResult, setOwnResult] = useState<Record<string, string>>({})
 
   const allVariants = subsets.flatMap((sub) => (sub.cards ?? []).flatMap((c) => c.variants ?? []))
   const ownedCount = allVariants.filter((v) => v.isOwned).length
@@ -107,6 +109,46 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
     setSubsets((prev) => prev.map((s) => s.id === id ? { ...s, isSpecial: newIsSpecial } : s))
   }
 
+  async function toggleSubsetHidden(id: string, newIsHidden: boolean) {
+    await fetch(`/api/card-subsets/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isHidden: newIsHidden }),
+    })
+    setSubsets((prev) => prev.map((s) => s.id === id ? { ...s, isHidden: newIsHidden } : s))
+  }
+
+  async function applyQuickOwn(subsetId: string) {
+    const input = ownInputs[subsetId] ?? ""
+    const numbers = input.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean)
+    if (!numbers.length) return
+    setOwnLoading((prev) => ({ ...prev, [subsetId]: true }))
+    setOwnResult((prev) => ({ ...prev, [subsetId]: "" }))
+    try {
+      const res = await fetch(`/api/card-series/${seriesId}/bulk-own`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subsetId, missingNumbers: numbers, mode: "own" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      const ownSet = new Set(numbers)
+      setSubsets((prev) => prev.map((s) =>
+        s.id !== subsetId ? s : {
+          ...s,
+          cards: s.cards?.map((c) => ({
+            ...c,
+            variants: ownSet.has(c.number) ? c.variants?.map((v) => ({ ...v, isOwned: true })) : c.variants,
+          })),
+        }
+      ))
+      setOwnResult((prev) => ({ ...prev, [subsetId]: `${data.owned} karet označeno jako vlastněné` }))
+      setOwnInputs((prev) => ({ ...prev, [subsetId]: "" }))
+    } finally {
+      setOwnLoading((prev) => ({ ...prev, [subsetId]: false }))
+    }
+  }
+
   async function reloadSubsets() {
     const res = await fetch(`/api/card-series/${seriesId}`)
     const data = await res.json()
@@ -138,7 +180,6 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      // Reload subset cards to include new variant rows
       const cardsRes = await fetch(`/api/card-series/${seriesId}`)
       const seriesData = await cardsRes.json()
       setSubsets(seriesData.subsets)
@@ -278,41 +319,20 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
     }
   }
 
-  // ── Card image ───────────────────────────────────────────────────────────────
+  // ── Card CRUD ────────────────────────────────────────────────────────────────
 
-  async function handleCardImageUpload(subsetId: string, cardId: string, file: File) {
-    setUploadingCardId(cardId)
-    try {
-      const compressed = await compressImage(file, "cards")
-      const fd = new FormData()
-      fd.append("file", compressed)
-      fd.append("type", "cards")
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Upload failed")
-      await fetch(`/api/cards/${cardId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: data.url }),
-      })
-      setSubsets((prev) => prev.map((s) =>
-        s.id !== subsetId ? s : { ...s, cards: s.cards?.map((c) => c.id === cardId ? { ...c, imageUrl: data.url } : c) }
-      ))
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Chyba uploadu")
-    } finally {
-      setUploadingCardId(null)
-    }
+  function updateCard(subsetId: string, updatedCard: Card) {
+    setSubsets((prev) => prev.map((s) =>
+      s.id !== subsetId ? s : {
+        ...s,
+        cards: s.cards?.map((c) => c.id === updatedCard.id ? updatedCard : c),
+      }
+    ))
   }
 
-  async function removeCardImage(subsetId: string, cardId: string) {
-    await fetch(`/api/cards/${cardId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageUrl: null }),
-    })
+  function deleteCard(subsetId: string, cardId: string) {
     setSubsets((prev) => prev.map((s) =>
-      s.id !== subsetId ? s : { ...s, cards: s.cards?.map((c) => c.id === cardId ? { ...c, imageUrl: null } : c) }
+      s.id !== subsetId ? s : { ...s, cards: s.cards?.filter((c) => c.id !== cardId) }
     ))
   }
 
@@ -381,7 +401,6 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
           subset={subset}
           isPricingEnabled={isPricingEnabled}
           toggling={toggling}
-          uploadingCardId={uploadingCardId}
           priceInputs={priceInputs}
           savingPriceId={savingPriceId}
           search={searches[subset.id] ?? ""}
@@ -400,17 +419,23 @@ export default function CardVariantManager({ seriesId, initialSubsets, totalCard
           onSearchChange={(v) => setSearches((p) => ({ ...p, [subset.id]: v }))}
           onMissingChange={(v) => setMissingInputs((p) => ({ ...p, [subset.id]: v }))}
           onBulkOwn={() => applyBulkOwn(subset.id)}
+          ownInput={ownInputs[subset.id] ?? ""}
+          ownLoading={ownLoading[subset.id] ?? false}
+          ownResult={ownResult[subset.id] ?? ""}
+          onOwnChange={(v) => setOwnInputs((p) => ({ ...p, [subset.id]: v }))}
+          onQuickOwn={() => applyQuickOwn(subset.id)}
           onToggleVariant={(cardId, variant) => toggleVariant(subset.id, cardId, variant)}
           onPriceChange={(vid, val) => setPriceInputs((p) => ({ ...p, [vid]: val }))}
           onPriceBlur={(vid, cid) => updateVariantPrice(vid, subset.id, cid)}
-          onImageUpload={(cid, f) => handleCardImageUpload(subset.id, cid, f)}
-          onImageRemove={(cid) => removeCardImage(subset.id, cid)}
+          onCardUpdated={(card) => updateCard(subset.id, card)}
+          onCardDeleted={(cardId) => deleteCard(subset.id, cardId)}
           onEditSubset={(id) => { setEditingSubsetId(id); setEditSubsetName(subset.name) }}
           onSaveSubsetName={() => saveSubsetName(subset.id)}
           onEditSubsetName={(v) => setEditSubsetName(v)}
           onCancelEditSubset={() => setEditingSubsetId(null)}
           onDeleteSubset={() => deleteSubset(subset.id)}
           onToggleSubsetSpecial={(v) => toggleSubsetSpecial(subset.id, v)}
+          onToggleSubsetHidden={(v) => toggleSubsetHidden(subset.id, v)}
           onImportComplete={reloadSubsets}
           onStartAddParallel={() => { setAddParallelSubsetId(subset.id); setNewParallelName(""); setNewParallelLimit("") }}
           onNewParallelNameChange={setNewParallelName}
@@ -480,7 +505,6 @@ interface SubsetSectionProps {
   subset: CardSubset
   isPricingEnabled: boolean
   toggling: Set<string>
-  uploadingCardId: string | null
   priceInputs: Record<string, string>
   savingPriceId: string | null
   search: string
@@ -496,20 +520,26 @@ interface SubsetSectionProps {
   editingParallelId: string | null
   editParallelName: string
   editParallelLimit: string
+  ownInput: string
+  ownLoading: boolean
+  ownResult: string
   onSearchChange: (v: string) => void
   onMissingChange: (v: string) => void
   onBulkOwn: () => void
+  onOwnChange: (v: string) => void
+  onQuickOwn: () => void
   onToggleVariant: (cardId: string, variant: CardVariant) => void
   onPriceChange: (variantId: string, val: string) => void
   onPriceBlur: (variantId: string, cardId: string) => void
-  onImageUpload: (cardId: string, file: File) => void
-  onImageRemove: (cardId: string) => void
+  onCardUpdated: (card: Card) => void
+  onCardDeleted: (cardId: string) => void
   onEditSubset: (id: string) => void
   onSaveSubsetName: () => void
   onEditSubsetName: (v: string) => void
   onCancelEditSubset: () => void
   onDeleteSubset: () => void
   onToggleSubsetSpecial: (newIsSpecial: boolean) => void
+  onToggleSubsetHidden: (newIsHidden: boolean) => void
   onImportComplete: () => void
   onStartAddParallel: () => void
   onNewParallelNameChange: (v: string) => void
@@ -526,13 +556,13 @@ interface SubsetSectionProps {
 }
 
 function SubsetSection({
-  subset, isPricingEnabled, toggling, uploadingCardId, priceInputs, savingPriceId,
-  search, missingInput, bulkLoading, bulkResult,
+  subset, isPricingEnabled, toggling, priceInputs, savingPriceId,
+  search, missingInput, bulkLoading, bulkResult, ownInput, ownLoading, ownResult,
   editingSubsetId, editSubsetName, addParallelSubsetId, newParallelName, newParallelLimit,
   addingParallel, editingParallelId, editParallelName, editParallelLimit,
-  onSearchChange, onMissingChange, onBulkOwn, onToggleVariant, onPriceChange, onPriceBlur,
-  onImageUpload, onImageRemove, onEditSubset, onSaveSubsetName, onEditSubsetName, onCancelEditSubset,
-  onDeleteSubset, onToggleSubsetSpecial, onImportComplete, onStartAddParallel, onNewParallelNameChange,
+  onSearchChange, onMissingChange, onBulkOwn, onOwnChange, onQuickOwn, onToggleVariant, onPriceChange, onPriceBlur,
+  onCardUpdated, onCardDeleted, onEditSubset, onSaveSubsetName, onEditSubsetName, onCancelEditSubset,
+  onDeleteSubset, onToggleSubsetSpecial, onToggleSubsetHidden, onImportComplete, onStartAddParallel, onNewParallelNameChange,
   onNewParallelLimitChange, onCreateParallel, onCancelAddParallel, onToggleParallelCollected, onStartEditParallel,
   onEditParallelNameChange, onEditParallelLimitChange, onSaveParallel, onCancelEditParallel, onDeleteParallel,
 }: SubsetSectionProps) {
@@ -592,6 +622,9 @@ function SubsetSection({
           ) : (
             <div className="flex items-center gap-2 flex-1">
               <span className="font-semibold text-[#1d1d1f]">{subset.name}</span>
+              {subset.isHidden && (
+                <span className="text-[10px] font-medium text-[#ff3b30] bg-[#fff2f0] px-1.5 py-0.5 rounded">skrytý</span>
+              )}
               <span className="text-xs text-[#8e8e93]">
                 {ownedVariants}/{totalVariants} variant · {cards.length} karet
               </span>
@@ -600,6 +633,22 @@ function SubsetSection({
 
           {!isEditingThis && (
             <div className="flex items-center gap-1 ml-auto">
+              <button
+                onClick={() => onToggleSubsetHidden(!subset.isHidden)}
+                className={`p-1.5 rounded-lg transition-colors ${subset.isHidden ? "text-[#ff3b30] bg-[#fff2f0]" : "text-[#8e8e93] hover:bg-[#f2f2f7]"}`}
+                title={subset.isHidden ? "Skrytý na webu (klik pro zobrazení)" : "Viditelný na webu (klik pro skrytí)"}
+              >
+                {subset.isHidden ? (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
               <button
                 onClick={() => onToggleSubsetSpecial(!subset.isSpecial)}
                 className={`p-1.5 rounded-lg transition-colors text-sm ${subset.isSpecial ? "text-[#ff9f0a] hover:bg-[#fff8e6]" : "text-[#8e8e93] hover:bg-[#f2f2f7]"}`}
@@ -735,11 +784,38 @@ function SubsetSection({
       {/* Cards */}
       {!collapsed && (
         <div className="p-4 space-y-3">
-          {/* Bulk-own */}
+          {/* Quick own + bulk-own */}
           {cards.length > 0 && (
-            <div className="border border-[#e5e5ea] rounded-xl p-3 space-y-2 bg-[#f9f9fb]">
+            <div className="border border-[#e5e5ea] rounded-xl p-3 space-y-3 bg-[#f9f9fb]">
+              {/* Quick own: mark specified numbers as owned */}
               <div>
-                <label className="block text-xs font-medium text-[#1d1d1f] mb-0.5">Čísla chybějících karet</label>
+                <label className="block text-xs font-medium text-[#1d1d1f] mb-0.5">Označit jako vlastní</label>
+                <p className="text-[10px] text-[#8e8e93] mb-1.5">Zadejte čísla, která <strong>máte</strong> — přidají se ke sbírce, ostatní se nezmění.</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={ownInput}
+                    onChange={(e) => onOwnChange(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && onQuickOwn()}
+                    placeholder="1, 2, 5"
+                    className="flex-1 px-3 py-1.5 text-sm font-mono border border-[#e5e5ea] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#34c759]/40"
+                  />
+                  <button
+                    onClick={onQuickOwn}
+                    disabled={ownLoading || !ownInput.trim()}
+                    className="px-3 py-1.5 bg-[#34c759] text-white text-xs font-medium rounded-lg disabled:opacity-40"
+                  >
+                    {ownLoading ? "…" : "Označit"}
+                  </button>
+                </div>
+                {ownResult && <p className="text-[10px] text-[#34c759] mt-1">✓ {ownResult}</p>}
+              </div>
+
+              <div className="border-t border-[#e5e5ea]" />
+
+              {/* Bulk missing: mark specified as missing, rest as owned */}
+              <div>
+                <label className="block text-xs font-medium text-[#1d1d1f] mb-0.5">Přepsat chybějící</label>
                 <p className="text-[10px] text-[#8e8e93] mb-1.5">Zadejte čísla, která <strong>nemáte</strong> — ostatní se označí jako vlastněné.</p>
                 <div className="flex gap-2">
                   <input
@@ -782,7 +858,7 @@ function SubsetSection({
           {cards.length === 0 ? (
             <p className="text-sm text-[#8e8e93] text-center py-4">Zatím žádné karty — použijte Import výše.</p>
           ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto -mx-1 px-1">
+            <div className="space-y-2 max-h-[600px] overflow-y-auto -mx-1 px-1">
               {filtered.map((card) => (
                 <CardRow
                   key={card.id}
@@ -790,14 +866,13 @@ function SubsetSection({
                   parallels={parallels}
                   isPricingEnabled={isPricingEnabled}
                   toggling={toggling}
-                  uploadingCardId={uploadingCardId}
                   priceInputs={priceInputs}
                   savingPriceId={savingPriceId}
                   onToggleVariant={(variant) => onToggleVariant(card.id, variant)}
                   onPriceChange={(vid, val) => onPriceChange(vid, val)}
                   onPriceBlur={(vid) => onPriceBlur(vid, card.id)}
-                  onImageUpload={(f) => onImageUpload(card.id, f)}
-                  onImageRemove={() => onImageRemove(card.id)}
+                  onCardUpdated={onCardUpdated}
+                  onCardDeleted={() => onCardDeleted(card.id)}
                 />
               ))}
             </div>
@@ -813,60 +888,194 @@ interface CardRowProps {
   parallels: CardParallel[]
   isPricingEnabled: boolean
   toggling: Set<string>
-  uploadingCardId: string | null
   priceInputs: Record<string, string>
   savingPriceId: string | null
   onToggleVariant: (variant: CardVariant) => void
   onPriceChange: (variantId: string, val: string) => void
   onPriceBlur: (variantId: string) => void
-  onImageUpload: (file: File) => void
-  onImageRemove: () => void
+  onCardUpdated: (card: Card) => void
+  onCardDeleted: () => void
 }
 
 function CardRow({
-  card, parallels, isPricingEnabled, toggling, uploadingCardId, priceInputs, savingPriceId,
-  onToggleVariant, onPriceChange, onPriceBlur, onImageUpload, onImageRemove,
+  card, parallels, isPricingEnabled, toggling, priceInputs, savingPriceId,
+  onToggleVariant, onPriceChange, onPriceBlur, onCardUpdated, onCardDeleted,
 }: CardRowProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editNumber, setEditNumber] = useState(card.number)
+  const [editName, setEditName] = useState(card.name)
+  const [editClub, setEditClub] = useState(card.club ?? "")
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [uploadingVariantId, setUploadingVariantId] = useState<string | null>(null)
+  const [variantImages, setVariantImages] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(card.variants?.map((v) => [v.id, v.imageUrl ?? null]) ?? [])
+  )
+
   const variantByParallel = useMemo(() => {
     const map = new Map<string, CardVariant>()
     for (const v of card.variants ?? []) map.set(v.parallelId, v)
     return map
   }, [card.variants])
 
+  function startEdit() {
+    setEditNumber(card.number)
+    setEditName(card.name)
+    setEditClub(card.club ?? "")
+    setIsEditing(true)
+  }
+
+  async function saveEdit() {
+    if (!editNumber.trim() || !editName.trim()) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/cards/${card.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: editNumber.trim(),
+          name: editName.trim(),
+          club: editClub.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Chyba ukládání")
+      onCardUpdated({ ...card, ...data })
+      setIsEditing(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Chyba ukládání")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Smazat kartu #${card.number} ${card.name}?`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/cards/${card.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Chyba mazání")
+      onCardDeleted()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Chyba mazání")
+      setDeleting(false)
+    }
+  }
+
+  async function uploadVariantImage(variantId: string, file: File) {
+    setUploadingVariantId(variantId)
+    try {
+      const compressed = await compressImage(file, "cards")
+      const fd = new FormData()
+      fd.append("file", compressed)
+      fd.append("type", "cards")
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error ?? "Upload failed")
+      await fetch(`/api/card-variants/${variantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: uploadData.url }),
+      })
+      setVariantImages((prev) => ({ ...prev, [variantId]: uploadData.url as string }))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Chyba uploadu")
+    } finally {
+      setUploadingVariantId(null)
+    }
+  }
+
+  async function removeVariantImage(variantId: string) {
+    await fetch(`/api/card-variants/${variantId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: null }),
+    })
+    setVariantImages((prev) => ({ ...prev, [variantId]: null }))
+  }
+
+  if (deleting) return null
+
   return (
     <div className="border border-[#e5e5ea] rounded-xl p-3">
-      <div className="flex items-start gap-2 mb-2">
-        {card.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={card.imageUrl} alt={card.name} className="w-8 h-10 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0" />
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs font-mono text-[#8e8e93] bg-[#f2f2f7] px-1.5 py-0.5 rounded-md">#{card.number}</span>
-            <span className="text-sm font-medium text-[#1d1d1f]">{card.name}</span>
+      {isEditing ? (
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center gap-2">
+            <input
+              value={editNumber}
+              onChange={(e) => setEditNumber(e.target.value)}
+              placeholder="#číslo"
+              className="w-20 px-2.5 py-1.5 text-sm font-mono border border-[#e5e5ea] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+              autoFocus
+              onKeyDown={(e) => e.key === "Escape" && setIsEditing(false)}
+            />
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Jméno hráče"
+              className="flex-1 px-2.5 py-1.5 text-sm border border-[#e5e5ea] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+            />
           </div>
-          {card.club && (
-            <p className="text-xs text-[#8e8e93] mt-0.5">{card.club}</p>
-          )}
+          <input
+            value={editClub}
+            onChange={(e) => setEditClub(e.target.value)}
+            placeholder="Klub (nepovinné)"
+            className="w-full px-2.5 py-1.5 text-sm border border-[#e5e5ea] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+            onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setIsEditing(false) }}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveEdit}
+              disabled={saving || !editNumber.trim() || !editName.trim()}
+              className="px-3 py-1 bg-[#007aff] text-white text-xs font-medium rounded-lg hover:bg-[#0066d6] disabled:opacity-40"
+            >
+              {saving ? "Ukládám…" : "Uložit"}
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="text-xs text-[#8e8e93] hover:text-[#1d1d1f]"
+            >
+              Zrušit
+            </button>
+          </div>
         </div>
-        <label className={`flex-shrink-0 p-1.5 rounded-lg cursor-pointer transition-colors ${uploadingCardId === card.id ? "opacity-50 pointer-events-none" : "text-[#8e8e93] hover:text-[#007aff] hover:bg-[#f0f6ff]"}`} title="Nahrát obrázek">
-          {uploadingCardId === card.id ? (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-          ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          )}
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImageUpload(f) }} disabled={uploadingCardId === card.id} />
-        </label>
-        {card.imageUrl && (
-          <button onClick={onImageRemove} className="flex-shrink-0 p-1.5 text-[#8e8e93] hover:text-[#ff3b30] hover:bg-[#fff2f0] rounded-lg transition-colors" title="Odebrat obrázek">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" /></svg>
+      ) : (
+        <div className="flex items-start gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs font-mono text-[#8e8e93] bg-[#f2f2f7] px-1.5 py-0.5 rounded-md">#{card.number}</span>
+              <span className="text-sm font-medium text-[#1d1d1f]">{card.name}</span>
+            </div>
+            {card.club && <p className="text-xs text-[#8e8e93] mt-0.5">{card.club}</p>}
+          </div>
+          <button
+            onClick={startEdit}
+            className="flex-shrink-0 p-1.5 text-[#8e8e93] hover:text-[#007aff] hover:bg-[#f0f6ff] rounded-lg transition-colors"
+            title="Upravit kartu"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
           </button>
-        )}
-      </div>
+          <button
+            onClick={handleDelete}
+            className="flex-shrink-0 p-1.5 text-[#8e8e93] hover:text-[#ff3b30] hover:bg-[#fff2f0] rounded-lg transition-colors"
+            title="Smazat kartu"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {parallels.map((p) => {
           const variant = variantByParallel.get(p.id)
           if (!variant) return null
+          const imgUrl = variantImages[variant.id] ?? null
+          const isUploading = uploadingVariantId === variant.id
+
           return (
             <div key={p.id} className="flex flex-col items-center gap-0.5">
               <button
@@ -886,6 +1095,7 @@ function CardRow({
                 {p.name}
                 {p.limitNumber != null && <span className="opacity-70">/{p.limitNumber}</span>}
               </button>
+
               {isPricingEnabled && (
                 <div className="flex items-center">
                   <input
@@ -901,6 +1111,38 @@ function CardRow({
                   )}
                 </div>
               )}
+
+              {/* Per-variant image */}
+              <div className="flex items-center gap-0.5">
+                {imgUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imgUrl} alt={card.name} className="w-6 h-8 object-cover rounded border border-[#e5e5ea]" />
+                )}
+                <label
+                  className={`p-0.5 rounded cursor-pointer transition-colors ${isUploading ? "opacity-50 pointer-events-none" : "text-[#c7c7cc] hover:text-[#007aff]"}`}
+                  title="Nahrát obrázek varianty"
+                >
+                  {isUploading ? (
+                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  )}
+                  <input
+                    type="file" accept="image/*" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadVariantImage(variant.id, f) }}
+                    disabled={isUploading}
+                  />
+                </label>
+                {imgUrl && (
+                  <button
+                    onClick={() => removeVariantImage(variant.id)}
+                    className="p-0.5 text-[#c7c7cc] hover:text-[#ff3b30] transition-colors"
+                    title="Odebrat obrázek"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
           )
         })}

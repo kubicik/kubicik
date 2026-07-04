@@ -53,8 +53,10 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     ? Math.round(allVariants.reduce((sum, v) => sum + (v.price ?? 0), 0))
     : null
 
-  // Per-subset progress for the header
-  const subsetStats = series.subsets.map((sub) => {
+  // Per-subset progress for the header — exclude hidden subsets
+  const visibleSubsets = series.subsets.filter((s) => !s.isHidden)
+
+  const subsetStats = visibleSubsets.map((sub) => {
     const subVariants = sub.cards.flatMap((c) => c.variants)
     const owned = subVariants.filter((v) => v.isOwned).length
     const total = subVariants.length
@@ -65,11 +67,12 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
     return series.collectBase
   })
 
-  const subsets: CardSubset[] = series.subsets.map((sub) => ({
+  const subsets: CardSubset[] = visibleSubsets.map((sub) => ({
     id: sub.id,
     seriesId: sub.seriesId,
     name: sub.name,
     isSpecial: sub.isSpecial,
+    isHidden: false,
     order: sub.order,
     createdAt: sub.createdAt.toISOString(),
     parallels: sub.parallels.map((p) => ({
@@ -96,13 +99,16 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
         parallelId: v.parallelId,
         isOwned: v.isOwned,
         price: v.price,
+        imageUrl: v.imageUrl,
         createdAt: v.createdAt.toISOString(),
         updatedAt: v.updatedAt.toISOString(),
       })),
     })),
   }))
 
-  const hasCardImages = subsets.flatMap((s) => s.cards ?? []).some((c) => c.imageUrl)
+  const hasCardImages = subsets.flatMap((s) => s.cards ?? []).some(
+    (c) => c.imageUrl || (c.variants ?? []).some((v) => v.imageUrl)
+  )
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -144,9 +150,21 @@ export default async function CardSeriesDetailPage({ params }: { params: Promise
             <p className="text-sm text-[#8e8e93] mb-1">
               {ownedCount} / {series.totalCardsCount > 0 ? series.totalCardsCount : allVariants.length} variant · {pct}% nasbíráno
             </p>
-            <p className="text-xs text-[#c7c7cc] mb-2">
-              Aktualizováno {relativeTime(lastChanged)}
-            </p>
+            <div className="flex items-center gap-3 mb-2">
+              <p className="text-xs text-[#c7c7cc]">
+                Aktualizováno {relativeTime(lastChanged)}
+              </p>
+              <a
+                href={`/api/card-series/${series.id}/export-csv`}
+                download
+                className="inline-flex items-center gap-1 text-xs text-[#007aff] hover:underline"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export XLS
+              </a>
+            </div>
 
             <div className="h-2.5 bg-[#e5e5ea] rounded-full overflow-hidden max-w-xs mb-3">
               <div

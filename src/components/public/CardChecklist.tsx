@@ -1,12 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import type { CardSubset, Card } from "@/types"
+import type { CardSubset, Card, CardVariant } from "@/types"
 
 interface Props {
   subsets: CardSubset[]
   displayMode: "missing_only" | "full_collection"
   showImages?: boolean
+}
+
+function bestImage(card: Card): string | null {
+  if (card.imageUrl) return card.imageUrl
+  return card.variants?.find((v) => v.imageUrl)?.imageUrl ?? null
 }
 
 export default function CardChecklist({ subsets, displayMode, showImages }: Props) {
@@ -18,7 +23,7 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
     return <p className="text-center text-[#8e8e93] py-12">Checklist zatím není k dispozici.</p>
   }
 
-  const cardsWithImages = showImages ? allCards.filter((c) => c.imageUrl) : []
+  const cardsWithImages = showImages ? allCards.filter((c) => bestImage(c)) : []
 
   return (
     <div className="space-y-8">
@@ -30,7 +35,7 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
               <div key={card.id} className="group relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={card.imageUrl!}
+                  src={bestImage(card)!}
                   alt={card.name}
                   className="w-full aspect-[2/3] object-cover rounded-xl border border-[#e5e5ea] shadow-sm"
                 />
@@ -84,8 +89,12 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
             <div className="flex items-center gap-2 mb-3">
               <span className="text-base">{subset.isSpecial ? "✨" : "📦"}</span>
               <h3 className="text-sm font-semibold text-[#3c3c43]">{subset.name}</h3>
-              <span className="text-xs text-[#8e8e93]">·</span>
-              <span className="text-xs text-[#8e8e93]">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</span>
+              {parallels.length > 1 && (
+                <>
+                  <span className="text-xs text-[#8e8e93]">·</span>
+                  <span className="text-xs text-[#8e8e93]">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</span>
+                </>
+              )}
             </div>
 
             {displayMode === "missing_only" && (
@@ -108,9 +117,20 @@ export default function CardChecklist({ subsets, displayMode, showImages }: Prop
   )
 }
 
-function CardRow({ card, parallels, displayMode, showImages }: { card: Card; parallels: { id: string; name: string; limitNumber: number | null }[]; displayMode: "missing_only" | "full_collection"; showImages?: boolean }) {
+function CardRow({
+  card,
+  parallels,
+  displayMode,
+  showImages,
+}: {
+  card: Card
+  parallels: { id: string; name: string; limitNumber: number | null }[]
+  displayMode: "missing_only" | "full_collection"
+  showImages?: boolean
+}) {
   const allOwned = card.variants?.every((v) => v.isOwned) ?? false
-  const variantMap = new Map(card.variants?.map((v) => [v.parallelId, v]) ?? [])
+  const variantMap = new Map<string, CardVariant>(card.variants?.map((v) => [v.parallelId, v]) ?? [])
+  const cardImage = showImages ? bestImage(card) : null
 
   return (
     <div
@@ -120,9 +140,9 @@ function CardRow({ card, parallels, displayMode, showImages }: { card: Card; par
           : "border-[#e5e5ea] bg-white"
       }`}
     >
-      {showImages && card.imageUrl ? (
+      {cardImage ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.imageUrl} alt={card.name} className="w-8 h-10 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0" />
+        <img src={cardImage} alt={card.name} className="w-8 h-10 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0" />
       ) : (
         <div className="flex-shrink-0 mt-0.5">
           {displayMode === "full_collection" && allOwned ? (
@@ -148,21 +168,27 @@ function CardRow({ card, parallels, displayMode, showImages }: { card: Card; par
           )}
         </div>
 
-        {parallels.length > 0 && (
+        {parallels.length > 1 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {parallels.map((p) => {
               const v = variantMap.get(p.id)
               const owned = v?.isOwned ?? false
+              const variantImage = showImages ? v?.imageUrl : null
               return (
-                <span
-                  key={p.id}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${
-                    owned ? "bg-[#f0fff4] text-[#34c759]" : "bg-[#fff2f0] text-[#ff3b30]"
-                  }`}
-                >
-                  {owned ? "✓" : "✗"} {p.name}
-                  {p.limitNumber != null && <span className="opacity-70">/{p.limitNumber}</span>}
-                </span>
+                <div key={p.id} className="flex items-center gap-1">
+                  {variantImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={variantImage} alt={p.name} className="w-5 h-7 object-cover rounded border border-[#e5e5ea]" />
+                  )}
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${
+                      owned ? "bg-[#f0fff4] text-[#34c759]" : "bg-[#fff2f0] text-[#ff3b30]"
+                    }`}
+                  >
+                    {owned ? "✓" : "✗"} {p.name}
+                    {p.limitNumber != null && <span className="opacity-70">/{p.limitNumber}</span>}
+                  </span>
+                </div>
               )
             })}
           </div>

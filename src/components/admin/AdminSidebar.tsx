@@ -219,7 +219,29 @@ export default function AdminSidebar({ user }: Props) {
           </svg>
           Odhlásit se
         </button>
+        <BuildInfo />
       </div>
     </aside>
+  )
+}
+
+function BuildInfo() {
+  const sha = process.env.NEXT_PUBLIC_GIT_SHA ?? "local"
+  const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME
+  const formatted = buildTime
+    ? new Intl.DateTimeFormat("cs-CZ", {
+        day: "numeric", month: "numeric", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+        timeZone: "Europe/Prague",
+      }).format(new Date(buildTime))
+    : null
+
+  return (
+    <div className="px-3 pt-1 pb-0.5">
+      <p className="text-[10px] text-[#c7c7cc] font-mono leading-tight">
+        {sha}
+        {formatted && <> · {formatted}</>}
+      </p>
+    </div>
   )
 }
