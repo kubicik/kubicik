@@ -223,3 +223,37 @@ model CardVariant {
 
   @@unique([cardId, parallelId])
 }
+
+model FamilyChild {
+  id         String       @id @default(cuid())
+  name       String
+  color      String       @default("#007aff")
+  order      Int          @default(0)
+  activities Activity[]
+  events     FamilyEvent[]
+}
+
+model Activity {
+  id         String      @id @default(cuid())
+  childId    String
+  child      FamilyChild @relation(fields: [childId], references: [id], onDelete: Cascade)
+  name       String
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  location   String?
+  color      String?
+  createdAt  DateTime    @default(now())
+}
+
+model FamilyEvent {
+  id        String       @id @default(cuid())
+  childId   String?
+  child     FamilyChild? @relation(fields: [childId], references: [id], onDelete: SetNull)
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  color     String?
+  note      String?
+  createdAt DateTime     @default(now())
+}

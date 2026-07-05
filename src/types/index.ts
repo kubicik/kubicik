@@ -144,6 +144,36 @@ export interface CardSeries {
   tags?: CardTag[]
 }
 
+export interface FamilyChild {
+  id: string
+  name: string
+  color: string
+  order: number
+}
+
+export interface Activity {
+  id: string
+  childId: string
+  name: string
+  dayOfWeek: number // 1=Mon, 7=Sun
+  startTime: string // "14:00"
+  endTime: string   // "15:30"
+  location: string | null
+  color: string | null
+  createdAt: string
+}
+
+export interface FamilyEvent {
+  id: string
+  childId: string | null
+  title: string
+  startDate: string
+  endDate: string
+  color: string | null
+  note: string | null
+  createdAt: string
+}
+
 export interface Trip {
   id: string
   slug: string

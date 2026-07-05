@@ -14,12 +14,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </Link>
           <div className="flex items-center gap-5">
             <Link
-              href="/participants"
-              className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
-            >
-              Účastníci
-            </Link>
-            <Link
               href="/kartickar"
               className="text-[#8e8e93] hover:text-[#1d1d1f] text-sm transition-colors"
             >

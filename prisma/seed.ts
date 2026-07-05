@@ -25,6 +25,17 @@ async function main() {
       console.log("Admin user already exists")
     }
   }
+
+  const familyUser = await prisma.user.findUnique({ where: { username: "rodina" } })
+  if (!familyUser) {
+    const hashed = await bcrypt.hash("rodina", 12)
+    await prisma.user.create({
+      data: { username: "rodina", password: hashed, name: "Rodina", role: "family" },
+    })
+    console.log("Family user created (rodina/rodina)")
+  } else {
+    console.log("Family user already exists")
+  }
 }
 
 main()

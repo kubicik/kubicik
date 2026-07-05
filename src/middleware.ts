@@ -8,8 +8,10 @@ export default auth
 export const config = {
   matcher: [
     "/admin/:path*",
+    "/family/:path*",
     "/api/trips/:path*",
     "/api/users/:path*",
     "/api/upload/:path*",
+    "/api/family/:path*",
   ],
 }
