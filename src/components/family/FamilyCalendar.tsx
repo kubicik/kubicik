@@ -8,6 +8,7 @@ const MONTH_NAMES = [
   "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec",
 ]
 const DAY_NAMES_SHORT = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"]
+const DAY_NAMES_FULL = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
 
 function dateStr(d: Date): string {
   const y = d.getFullYear()
@@ -16,18 +17,19 @@ function dateStr(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function parseLocalDate(iso: string): Date {
+function formatDate(iso: string): string {
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number)
-  return new Date(y, m - 1, d)
+  return `${d}. ${m}. ${y}`
 }
 
 type ModalState =
   | { mode: "closed" }
   | { mode: "add"; date: string }
   | { mode: "edit"; event: FamilyEvent }
+  | { mode: "day"; date: string; dayEvents: FamilyEvent[] }
 
 interface EventModalProps {
-  state: ModalState
+  state: Extract<ModalState, { mode: "add" | "edit" }>
   children: FamilyChild[]
   onClose: () => void
   onSave: (data: Omit<FamilyEvent, "id" | "createdAt">) => Promise<void>
@@ -207,20 +209,100 @@ function EventModal({ state, children, onClose, onSave, onDelete }: EventModalPr
   )
 }
 
+interface DayModalProps {
+  date: string
+  dayEvents: FamilyEvent[]
+  childMap: Map<string, FamilyChild>
+  onClose: () => void
+  onAdd: (date: string) => void
+  onEdit: (event: FamilyEvent) => void
+}
+
+function DayModal({ date, dayEvents, childMap, onClose, onAdd, onEdit }: DayModalProps) {
+  const d = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)))
+  const dayName = DAY_NAMES_FULL[(d.getDay() + 6) % 7]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#e5e5ea] flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-[#1d1d1f]">{dayName}</h3>
+            <p className="text-xs text-[#8e8e93]">{formatDate(date)}</p>
+          </div>
+          <button
+            onClick={() => { onClose(); onAdd(date) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007aff] text-white text-xs font-medium rounded-lg hover:bg-[#0066d6] transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Přidat
+          </button>
+        </div>
+
+        <div className="divide-y divide-[#f2f2f7] max-h-[60vh] overflow-y-auto">
+          {dayEvents.map((event) => {
+            const child = event.childId ? childMap.get(event.childId) : null
+            const eventColor = event.color ?? child?.color ?? "#3c3c43"
+            const multiDay = event.startDate.slice(0, 10) !== event.endDate.slice(0, 10)
+
+            return (
+              <button
+                key={event.id}
+                onClick={() => { onClose(); onEdit(event) }}
+                className="w-full text-left px-5 py-3.5 hover:bg-[#f9f9f9] transition-colors flex items-start gap-3"
+              >
+                <div className="w-1 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: eventColor }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#1d1d1f] truncate">{event.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-[#8e8e93]">
+                      {child ? child.name : "Celá rodina"}
+                    </span>
+                    {multiDay && (
+                      <span className="text-xs text-[#8e8e93]">
+                        · {formatDate(event.startDate)} – {formatDate(event.endDate)}
+                      </span>
+                    )}
+                    {event.note && (
+                      <span className="text-xs text-[#8e8e93] truncate">· {event.note}</span>
+                    )}
+                  </div>
+                </div>
+                <svg className="w-4 h-4 text-[#c7c7cc] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="px-5 py-3 border-t border-[#e5e5ea]">
+          <button onClick={onClose} className="text-sm text-[#8e8e93] hover:text-[#1d1d1f] transition-colors">
+            Zavřít
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function getMonthDays(year: number, month: number): (Date | null)[] {
   const firstDay = new Date(year, month - 1, 1)
   const lastDay = new Date(year, month, 0)
-  // Czech: week starts Monday (dayOfWeek: Mon=0, ..., Sun=6)
   const startPad = (firstDay.getDay() + 6) % 7
   const days: (Date | null)[] = []
   for (let i = 0; i < startPad; i++) days.push(null)
   for (let d = 1; d <= lastDay.getDate(); d++) {
     days.push(new Date(year, month - 1, d))
   }
-  // pad to full weeks
   while (days.length % 7 !== 0) days.push(null)
   return days
 }
+
+const MAX_VISIBLE = 5
 
 interface Props {
   initialEvents: FamilyEvent[]
@@ -234,10 +316,16 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
   const [month, setMonth] = useState(initialMonth)
   const [events, setEvents] = useState<FamilyEvent[]>(initialEvents)
   const [children] = useState<FamilyChild[]>(initialChildren)
+  const [activeChild, setActiveChild] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>({ mode: "closed" })
   const [loading, setLoading] = useState(false)
 
   const childMap = new Map(children.map((c) => [c.id, c]))
+
+  // When a child filter is active: show that child's events + whole-family events (childId === null)
+  const filteredEvents = activeChild
+    ? events.filter((e) => e.childId === activeChild || e.childId === null)
+    : events
 
   async function navigate(deltaMonth: number) {
     let newMonth = month + deltaMonth
@@ -290,10 +378,7 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
     <div>
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-white rounded-xl transition-colors"
-        >
+        <button onClick={() => navigate(-1)} className="p-2 hover:bg-white rounded-xl transition-colors">
           <svg className="w-5 h-5 text-[#3c3c43]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -301,29 +386,48 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
         <h2 className="text-lg font-semibold text-[#1d1d1f]">
           {MONTH_NAMES[month - 1]} {year}
         </h2>
-        <button
-          onClick={() => navigate(1)}
-          className="p-2 hover:bg-white rounded-xl transition-colors"
-        >
+        <button onClick={() => navigate(1)} className="p-2 hover:bg-white rounded-xl transition-colors">
           <svg className="w-5 h-5 text-[#3c3c43]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
       </div>
 
-      {/* Legend */}
+      {/* Child filter */}
       {children.length > 0 && (
-        <div className="flex items-center gap-3 mb-4 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-[#3c3c43]" />
-            <span className="text-xs text-[#8e8e93]">Celá rodina</span>
-          </div>
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <button
+            onClick={() => setActiveChild(null)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              !activeChild
+                ? "bg-[#1d1d1f] text-white"
+                : "bg-white text-[#3c3c43] border border-[#e5e5ea] hover:bg-[#f2f2f7]"
+            }`}
+          >
+            Celá rodina
+          </button>
           {children.map((c) => (
-            <div key={c.id} className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
-              <span className="text-xs text-[#8e8e93]">{c.name}</span>
-            </div>
+            <button
+              key={c.id}
+              onClick={() => setActiveChild(c.id === activeChild ? null : c.id)}
+              className="px-3 py-1.5 rounded-full text-sm font-medium border-2 transition-all"
+              style={{
+                borderColor: activeChild === c.id ? c.color : "transparent",
+                backgroundColor: activeChild === c.id ? c.color + "20" : "white",
+                color: activeChild === c.id ? c.color : "#3c3c43",
+                borderWidth: "2px",
+                borderStyle: "solid",
+                ...(activeChild !== c.id && { borderColor: "#e5e5ea", borderWidth: "1px" }),
+              }}
+            >
+              {c.name}
+            </button>
           ))}
+          {activeChild && (
+            <span className="text-xs text-[#8e8e93] ml-1">
+              · včetně událostí celé rodiny
+            </span>
+          )}
         </div>
       )}
 
@@ -344,22 +448,25 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
               <div key={weekIdx} className="grid grid-cols-7 border-b border-[#e5e5ea] last:border-b-0">
                 {weekDays.map((day, dIdx) => {
                   if (!day) {
-                    return <div key={dIdx} className="min-h-[80px] bg-[#fafafa] border-l border-[#e5e5ea] first:border-l-0" />
+                    return <div key={dIdx} className="min-h-[96px] bg-[#fafafa] border-l border-[#e5e5ea] first:border-l-0" />
                   }
                   const ds = dateStr(day)
                   const isToday = ds === today
                   const isCurrentMonth = day.getMonth() + 1 === month
 
-                  const dayEvents = events.filter((e) => {
+                  const dayEvents = filteredEvents.filter((e) => {
                     const start = e.startDate.slice(0, 10)
                     const end = e.endDate.slice(0, 10)
                     return ds >= start && ds <= end
                   })
 
+                  const visible = dayEvents.slice(0, MAX_VISIBLE)
+                  const overflow = dayEvents.length - MAX_VISIBLE
+
                   return (
                     <div
                       key={dIdx}
-                      className={`min-h-[80px] p-1.5 border-l border-[#e5e5ea] first:border-l-0 cursor-pointer hover:bg-[#f9f9f9] transition-colors ${
+                      className={`min-h-[96px] p-1.5 border-l border-[#e5e5ea] first:border-l-0 cursor-pointer hover:bg-[#f9f9f9] transition-colors ${
                         !isCurrentMonth ? "bg-[#fafafa]" : ""
                       }`}
                       onClick={() => setModal({ mode: "add", date: ds })}
@@ -379,7 +486,7 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
                       </div>
 
                       <div className="space-y-0.5">
-                        {dayEvents.slice(0, 3).map((event) => {
+                        {visible.map((event) => {
                           const child = event.childId ? childMap.get(event.childId) : null
                           const eventColor = event.color ?? child?.color ?? "#3c3c43"
                           const isStart = event.startDate.slice(0, 10) === ds
@@ -398,10 +505,16 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
                             </div>
                           )
                         })}
-                        {dayEvents.length > 3 && (
-                          <div className="text-[9px] text-[#8e8e93] pl-1">
-                            +{dayEvents.length - 3} další
-                          </div>
+                        {overflow > 0 && (
+                          <button
+                            className="text-[10px] text-[#007aff] font-medium pl-1 hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setModal({ mode: "day", date: ds, dayEvents })
+                            }}
+                          >
+                            +{overflow} další
+                          </button>
                         )}
                       </div>
                     </div>
@@ -413,13 +526,26 @@ export default function FamilyCalendar({ initialEvents, initialChildren, initial
         </div>
       </div>
 
-      {modal.mode !== "closed" && (
+      {/* Event edit/add modal */}
+      {(modal.mode === "add" || modal.mode === "edit") && (
         <EventModal
           state={modal}
           children={children}
           onClose={() => setModal({ mode: "closed" })}
           onSave={handleSave}
           onDelete={handleDelete}
+        />
+      )}
+
+      {/* Day overflow modal */}
+      {modal.mode === "day" && (
+        <DayModal
+          date={modal.date}
+          dayEvents={modal.dayEvents}
+          childMap={childMap}
+          onClose={() => setModal({ mode: "closed" })}
+          onAdd={(date) => setModal({ mode: "add", date })}
+          onEdit={(event) => setModal({ mode: "edit", event })}
         />
       )}
     </div>
