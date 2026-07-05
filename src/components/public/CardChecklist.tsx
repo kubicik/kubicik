@@ -87,32 +87,54 @@ export default function CardChecklist({ seriesId, subsets, displayMode, showImag
 
         return (
           <div key={subset.id}>
-            <div className="flex items-center gap-2 mb-3">
-              {subset.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={subset.imageUrl} alt={subset.name} className="w-7 h-7 object-cover rounded-md border border-[#e5e5ea] flex-shrink-0" />
-              ) : (
+            {subset.imageUrl ? (
+              <div className="relative rounded-2xl overflow-hidden mb-4 border border-[#e5e5ea]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={subset.imageUrl} alt={subset.name} className="w-full h-36 object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 px-4 py-3 flex items-end justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-white leading-tight">{subset.name}</h3>
+                    {parallels.length > 1 && (
+                      <p className="text-xs text-white/70 mt-0.5">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</p>
+                    )}
+                  </div>
+                  <a
+                    href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
+                    download
+                    className="flex-shrink-0 flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors"
+                    title="Exportovat tento subset"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    CSV
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mb-3">
                 <span className="text-base">{subset.isSpecial ? "✨" : "📦"}</span>
-              )}
-              <h3 className="text-sm font-semibold text-[#3c3c43]">{subset.name}</h3>
-              {parallels.length > 1 && (
-                <>
-                  <span className="text-xs text-[#8e8e93]">·</span>
-                  <span className="text-xs text-[#8e8e93]">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</span>
-                </>
-              )}
-              <a
-                href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
-                download
-                className="ml-auto flex-shrink-0 flex items-center gap-1 text-xs text-[#8e8e93] hover:text-[#007aff] transition-colors"
-                title="Exportovat tento subset"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                CSV
-              </a>
-            </div>
+                <h3 className="text-sm font-semibold text-[#3c3c43]">{subset.name}</h3>
+                {parallels.length > 1 && (
+                  <>
+                    <span className="text-xs text-[#8e8e93]">·</span>
+                    <span className="text-xs text-[#8e8e93]">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</span>
+                  </>
+                )}
+                <a
+                  href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
+                  download
+                  className="ml-auto flex-shrink-0 flex items-center gap-1 text-xs text-[#8e8e93] hover:text-[#007aff] transition-colors"
+                  title="Exportovat tento subset"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  CSV
+                </a>
+              </div>
+            )}
 
             {displayMode === "missing_only" && (
               <p className="text-sm text-[#8e8e93] mb-3">Chybí {filtered.length} karet.</p>
