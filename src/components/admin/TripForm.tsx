@@ -202,6 +202,7 @@ interface TripData {
   coverPhotoFocus: Focus
   participants: string[]
   published: boolean
+  status: "open" | "closed"
   expandAllDays: boolean
   country: string
   tripType: string
@@ -236,6 +237,7 @@ export default function TripForm({ initial }: Props) {
   const [participants, setParticipants] = useState<string[]>(initial?.participants ?? [])
   const [participantSuggestions, setParticipantSuggestions] = useState<string[]>([])
   const [published, setPublished] = useState(initial?.published ?? false)
+  const [status, setStatus] = useState<"open" | "closed">(initial?.status ?? "open")
   const [expandAllDays, setExpandAllDays] = useState(initial?.expandAllDays ?? false)
   const [country, setCountry] = useState(initial?.country ?? "")
   const [tripType, setTripType] = useState(initial?.tripType ?? "")
@@ -291,6 +293,7 @@ export default function TripForm({ initial }: Props) {
         coverPhotoFocus: coverPhoto ? JSON.stringify(coverPhotoFocus) : null,
         participants,
         published,
+        status,
         expandAllDays,
         country: country || null,
         tripType: tripType || null,
@@ -482,6 +485,41 @@ export default function TripForm({ initial }: Props) {
 
       {/* Published + presentation settings */}
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] p-6 space-y-4">
+        <div>
+          <p className="font-medium text-[#1d1d1f] text-sm mb-1">Stav přípravy</p>
+          <p className="text-[#8e8e93] text-xs mb-2">Evidence stavu bez ohledu na publikování</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setStatus("open")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                status === "open"
+                  ? "bg-[#e8f8ed] text-[#1a7f37] border-[#34c759]/30"
+                  : "bg-white text-[#8e8e93] border-[#e5e5ea] hover:border-[#34c759]/40"
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              </svg>
+              Otevřeno
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus("closed")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                status === "closed"
+                  ? "bg-[#fff3e0] text-[#e65100] border-[#ff9f0a]/30"
+                  : "bg-white text-[#8e8e93] border-[#e5e5ea] hover:border-[#ff9f0a]/40"
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM10 7a2 2 0 114 0v3H10V7z" />
+              </svg>
+              Uzavřeno
+            </button>
+          </div>
+        </div>
+        <div className="border-t border-[#f2f2f7]" />
         <label className="flex items-center justify-between cursor-pointer">
           <div>
             <p className="font-medium text-[#1d1d1f] text-sm">Publikovat výlet</p>

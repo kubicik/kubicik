@@ -3,18 +3,24 @@ import Link from "next/link"
 import TripListActions from "@/components/admin/TripListActions"
 import TripImportButton from "@/components/admin/TripImportButton"
 
-export default async function AdminTripsPage() {
+export default async function AdminTripsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const { status } = await searchParams
+  const statusFilter = status === "open" || status === "closed" ? status : undefined
+
   const trips = await prisma.trip.findMany({
+    where: statusFilter ? { status: statusFilter } : undefined,
     orderBy: { startDate: "desc" },
     include: { _count: { select: { stops: true } } },
   })
 
+  const filterBase = "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-[#1d1d1f]">Výlety</h1>
-          <p className="text-[#8e8e93] text-sm mt-0.5">{trips.length} výletů celkem</p>
+          <p className="text-[#8e8e93] text-sm mt-0.5">{trips.length} výletů</p>
         </div>
         <div className="flex items-center gap-2">
           <TripImportButton />
@@ -30,17 +36,34 @@ export default async function AdminTripsPage() {
         </div>
       </div>
 
+      {/* Status filter */}
+      <div className="flex gap-2 mb-5">
+        <Link href="/admin/trips" className={`${filterBase} ${!statusFilter ? "bg-[#1d1d1f] text-white" : "bg-white text-[#3c3c43] shadow-[0_1px_4px_rgba(0,0,0,0.08)] hover:bg-[#f2f2f7]"}`}>
+          Vše
+        </Link>
+        <Link href="/admin/trips?status=open" className={`${filterBase} flex items-center gap-1.5 ${statusFilter === "open" ? "bg-[#e8f8ed] text-[#1a7f37]" : "bg-white text-[#3c3c43] shadow-[0_1px_4px_rgba(0,0,0,0.08)] hover:bg-[#f2f2f7]"}`}>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+          </svg>
+          Otevřeno
+        </Link>
+        <Link href="/admin/trips?status=closed" className={`${filterBase} flex items-center gap-1.5 ${statusFilter === "closed" ? "bg-[#fff3e0] text-[#e65100]" : "bg-white text-[#3c3c43] shadow-[0_1px_4px_rgba(0,0,0,0.08)] hover:bg-[#f2f2f7]"}`}>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2zM10 7a2 2 0 114 0v3H10V7z" />
+          </svg>
+          Uzavřeno
+        </Link>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden">
         {trips.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <svg className="w-12 h-12 text-[#c7c7cc] mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064" />
-            </svg>
-            <p className="text-[#8e8e93] text-sm">Zatím žádné výlety</p>
-            <Link href="/admin/trips/new" className="mt-3 inline-block text-[#007aff] text-sm hover:underline">
-              Přidat první výlet
-            </Link>
+            <p className="text-[#8e8e93] text-sm">Žádné výlety</p>
+            {!statusFilter && (
+              <Link href="/admin/trips/new" className="mt-3 inline-block text-[#007aff] text-sm hover:underline">
+                Přidat první výlet
+              </Link>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-[#e5e5ea]">
@@ -63,12 +86,17 @@ export default async function AdminTripsPage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-[#1d1d1f] text-sm truncate">{trip.title}</p>
                       <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
                         trip.published ? "bg-[#e8f8ed] text-[#1a7f37]" : "bg-[#f2f2f7] text-[#8e8e93]"
                       }`}>
                         {trip.published ? "Publikováno" : "Koncept"}
+                      </span>
+                      <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                        trip.status === "closed" ? "bg-[#fff3e0] text-[#e65100]" : "bg-[#e8f8ed] text-[#1a7f37]"
+                      }`}>
+                        {trip.status === "closed" ? "Uzavřeno" : "Otevřeno"}
                       </span>
                     </div>
                     <p className="text-[#8e8e93] text-xs mt-0.5">

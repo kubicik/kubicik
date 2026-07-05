@@ -17,6 +17,11 @@ function bestImage(card: Card): string | null {
 
 export default function CardChecklist({ seriesId, subsets, displayMode, showImages }: Props) {
   const [search, setSearch] = useState("")
+  // Per-subset view mode: "simple" = čísla za sebou, "detailed" = řádky (2 sloupce)
+  // Default: base (isSpecial=false) → simple, special → detailed
+  const [viewModes, setViewModes] = useState<Record<string, "simple" | "detailed">>(() =>
+    Object.fromEntries(subsets.map((s) => [s.id, s.isSpecial ? "detailed" : "simple"]))
+  )
 
   const allCards = subsets.flatMap((sub) => sub.cards ?? [])
 
@@ -85,6 +90,10 @@ export default function CardChecklist({ seriesId, subsets, displayMode, showImag
 
         if (filtered.length === 0 && displayMode === "missing_only") return null
 
+        const viewMode = viewModes[subset.id] ?? (subset.isSpecial ? "detailed" : "simple")
+        const toggleView = () =>
+          setViewModes((prev) => ({ ...prev, [subset.id]: viewMode === "simple" ? "detailed" : "simple" }))
+
         return (
           <div key={subset.id}>
             {subset.imageUrl ? (
@@ -99,17 +108,22 @@ export default function CardChecklist({ seriesId, subsets, displayMode, showImag
                       <p className="text-xs text-white/70 mt-0.5">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</p>
                     )}
                   </div>
-                  <a
-                    href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
-                    download
-                    className="flex-shrink-0 flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors"
-                    title="Exportovat tento subset"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    CSV
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <button onClick={toggleView} className="text-xs text-white/70 hover:text-white transition-colors">
+                      {viewMode === "simple" ? "Detailní" : "Jednoduché"}
+                    </button>
+                    <a
+                      href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
+                      download
+                      className="flex-shrink-0 flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors"
+                      title="Exportovat tento subset"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      CSV
+                    </a>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -122,17 +136,22 @@ export default function CardChecklist({ seriesId, subsets, displayMode, showImag
                     <span className="text-xs text-[#8e8e93]">{parallels.map((p) => p.name + (p.limitNumber ? ` /${p.limitNumber}` : "")).join(", ")}</span>
                   </>
                 )}
-                <a
-                  href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
-                  download
-                  className="ml-auto flex-shrink-0 flex items-center gap-1 text-xs text-[#8e8e93] hover:text-[#007aff] transition-colors"
-                  title="Exportovat tento subset"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  CSV
-                </a>
+                <div className="ml-auto flex items-center gap-2">
+                  <button onClick={toggleView} className="text-xs text-[#8e8e93] hover:text-[#007aff] transition-colors">
+                    {viewMode === "simple" ? "Detailní" : "Jednoduché"}
+                  </button>
+                  <a
+                    href={`/api/card-series/${seriesId}/export-csv?subsetId=${subset.id}`}
+                    download
+                    className="flex-shrink-0 flex items-center gap-1 text-xs text-[#8e8e93] hover:text-[#007aff] transition-colors"
+                    title="Exportovat tento subset"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    CSV
+                  </a>
+                </div>
               </div>
             )}
 
@@ -140,15 +159,45 @@ export default function CardChecklist({ seriesId, subsets, displayMode, showImag
               <p className="text-sm text-[#8e8e93] mb-3">Chybí {filtered.length} karet.</p>
             )}
 
-            <div className="space-y-2">
-              {filtered.length === 0 ? (
+            {viewMode === "simple" ? (
+              /* Jednoduché zobrazení: čísla za sebou */
+              filtered.length === 0 ? (
                 <p className="text-center text-[#8e8e93] py-6">
                   {search ? "Žádná karta neodpovídá hledání." : "Všechny karty jsou nasbírány! 🎉"}
                 </p>
               ) : (
-                filtered.map((card) => <CardRow key={card.id} card={card} parallels={parallels} displayMode={displayMode} showImages={showImages} />)
-              )}
-            </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {filtered.map((card) => {
+                    const owned = card.variants?.every((v) => v.isOwned) ?? false
+                    return (
+                      <span
+                        key={card.id}
+                        className={`text-xs font-mono px-2 py-0.5 rounded-md border ${
+                          displayMode === "full_collection" && owned
+                            ? "bg-[#f2f2f7] text-[#8e8e93] border-[#e5e5ea] line-through"
+                            : owned
+                            ? "bg-[#f0fff4] text-[#34c759] border-[#34c759]/20"
+                            : "bg-[#fff2f0] text-[#ff3b30] border-[#ff3b30]/20"
+                        }`}
+                      >
+                        {card.number}
+                      </span>
+                    )
+                  })}
+                </div>
+              )
+            ) : (
+              /* Detailní zobrazení: řádky ve 2 sloupcích */
+              filtered.length === 0 ? (
+                <p className="text-center text-[#8e8e93] py-6">
+                  {search ? "Žádná karta neodpovídá hledání." : "Všechny karty jsou nasbírány! 🎉"}
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {filtered.map((card) => <CardRow key={card.id} card={card} parallels={parallels} displayMode={displayMode} showImages={showImages} />)}
+                </div>
+              )
+            )}
           </div>
         )
       })}

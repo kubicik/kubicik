@@ -154,6 +154,7 @@ export interface Trip {
   coverPhoto: string | null
   participants: string
   published: boolean
+  status: "open" | "closed"
   country: string | null
   tripType: string | null
   tips: string | null

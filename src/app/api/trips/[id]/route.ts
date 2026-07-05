@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await request.json()
-  const { title, description, startDate, endDate, coverPhoto, coverPhotoFocus, participants, published, country, tripType, tips, expandAllDays } = body
+  const { title, description, startDate, endDate, coverPhoto, coverPhotoFocus, participants, published, status, country, tripType, tips, expandAllDays } = body
 
   const trip = await prisma.trip.update({
     where: { id },
@@ -32,6 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       coverPhotoFocus: coverPhotoFocus || null,
       participants: JSON.stringify(participants || []),
       published: published ?? false,
+      status: status === "closed" ? "closed" : "open",
       country: country || null,
       tripType: tripType || null,
       tips: tips || null,

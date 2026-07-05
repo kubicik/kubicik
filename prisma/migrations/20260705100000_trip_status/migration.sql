@@ -1,0 +1,1 @@
+ALTER TABLE "Trip" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'open';

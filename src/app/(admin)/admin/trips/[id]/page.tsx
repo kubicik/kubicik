@@ -74,6 +74,7 @@ export default async function EditTripPage({ params }: { params: Promise<{ id: s
           })(),
           participants,
           published: trip.published,
+          status: (trip.status === "closed" ? "closed" : "open") as "open" | "closed",
           expandAllDays: trip.expandAllDays,
           country: trip.country ?? "",
           tripType: trip.tripType ?? "",

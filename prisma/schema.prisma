@@ -39,6 +39,7 @@ model Trip {
   coverPhoto   String?
   participants String   @default("[]")
   published    Boolean  @default(false)
+  status       String   @default("open")
   country          String?
   tripType         String?
   tips             String?
