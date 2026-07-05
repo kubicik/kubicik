@@ -43,9 +43,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <footer className="border-t border-[#e5e5ea] py-6">
         <div className="max-w-5xl mx-auto px-6 flex items-center justify-between text-[#8e8e93] text-sm">
           <span>© {new Date().getFullYear()} Kubičík.OVI</span>
-          <Link href="/admin" className="hover:text-[#1d1d1f] transition-colors">
-            Admin
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/family" className="hover:text-[#1d1d1f] transition-colors">
+              Rodina
+            </Link>
+            <Link href="/admin" className="hover:text-[#1d1d1f] transition-colors">
+              Admin
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

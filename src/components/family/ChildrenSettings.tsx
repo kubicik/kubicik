@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { FamilyChild } from "@/types"
 
 const PALETTE = [
@@ -70,6 +70,108 @@ function ChildForm({ initial, onSave, onCancel, nextOrder }: ChildFormProps) {
           className="px-4 py-1.5 bg-[#007aff] text-white text-sm font-medium rounded-lg hover:bg-[#0066d6] disabled:opacity-50 transition-colors"
         >
           {saving ? "Ukládám..." : "Uložit"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CredentialsForm() {
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/family/credentials")
+      .then((r) => r.json())
+      .then((d) => d?.username && setCurrentUsername(d.username))
+      .catch(() => null)
+  }, [])
+
+  async function handleSave() {
+    if (password && password !== confirm) {
+      setMessage({ type: "err", text: "Hesla se neshodují" })
+      return
+    }
+    if (!username.trim() && !password.trim()) return
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch("/api/family/credentials", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username || undefined, password: password || undefined }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setMessage({ type: "err", text: err.error ?? "Chyba" })
+      } else {
+        const updated = await res.json()
+        setCurrentUsername(updated.username)
+        setUsername("")
+        setPassword("")
+        setConfirm("")
+        setMessage({ type: "ok", text: "Uloženo" })
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-8 bg-white rounded-2xl border border-[#e5e5ea] p-5">
+      <h3 className="text-sm font-semibold text-[#1d1d1f] mb-1">Přihlašovací údaje rodinné sekce</h3>
+      {currentUsername && (
+        <p className="text-xs text-[#8e8e93] mb-4">
+          Aktuální jméno: <code className="bg-[#f2f2f7] px-1.5 py-0.5 rounded font-mono text-[#1d1d1f]">{currentUsername}</code>
+        </p>
+      )}
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-[#8e8e93] mb-1">Nové uživatelské jméno (volitelné)</label>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Ponechat beze změny"
+            className="w-full px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-[#8e8e93] mb-1">Nové heslo (volitelné)</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Ponechat beze změny"
+            className="w-full px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+          />
+        </div>
+        {password && (
+          <div>
+            <label className="block text-xs font-medium text-[#8e8e93] mb-1">Potvrdit heslo</label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Zopakujte heslo"
+              className="w-full px-3 py-2 text-sm border border-[#e5e5ea] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 focus:border-[#007aff]"
+            />
+          </div>
+        )}
+        {message && (
+          <p className={`text-xs ${message.type === "ok" ? "text-[#34c759]" : "text-[#ff3b30]"}`}>
+            {message.text}
+          </p>
+        )}
+        <button
+          onClick={handleSave}
+          disabled={saving || (!username.trim() && !password.trim())}
+          className="px-4 py-2 bg-[#007aff] text-white text-sm font-medium rounded-xl hover:bg-[#0066d6] disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Ukládám..." : "Uložit přihlašovací údaje"}
         </button>
       </div>
     </div>
@@ -201,15 +303,7 @@ export default function ChildrenSettings({ initialChildren }: Props) {
         </button>
       )}
 
-      <div className="mt-8 bg-[#f2f2f7] rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-[#3c3c43] mb-2">Přístup rodinné sekce</h3>
-        <p className="text-xs text-[#8e8e93]">
-          Přihlašovací údaje: <code className="bg-white px-1.5 py-0.5 rounded text-[#1d1d1f] font-mono">rodina / rodina</code>
-        </p>
-        <p className="text-xs text-[#8e8e93] mt-1">
-          Heslo lze změnit v administraci pod Uživatelé.
-        </p>
-      </div>
+      <CredentialsForm />
     </div>
   )
 }
