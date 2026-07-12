@@ -176,14 +176,7 @@ export default async function TripDetailPage({ params }: { params: Promise<{ slu
       </header>
 
       {/* ─── DRONE PHOTOS ─────────────────────────────────────────── */}
-      {dronePhotos.length > 0 && (
-        <>
-          <div className="max-w-3xl mx-auto px-6">
-            <hr className="border-[#e5e5ea]" />
-          </div>
-          <TripDronePhotos photos={dronePhotos} />
-        </>
-      )}
+      {dronePhotos.length > 0 && <TripDronePhotos photos={dronePhotos} />}
 
       {/* ─── THIN DIVIDER ─────────────────────────────────────────── */}
       <div className="max-w-3xl mx-auto px-6">
