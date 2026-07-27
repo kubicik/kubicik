@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { slugify } from "@/lib/slugify"
+import { normalizeNames, syncTripParticipants } from "@/lib/persons"
 
 export async function GET() {
   const trips = await prisma.trip.findMany({
@@ -25,6 +26,8 @@ export async function POST(request: NextRequest) {
     slug = `${slug}-${Date.now()}`
   }
 
+  const cleanParticipants = normalizeNames(participants)
+
   const trip = await prisma.trip.create({
     data: {
       slug,
@@ -34,13 +37,15 @@ export async function POST(request: NextRequest) {
       endDate: new Date(endDate),
       coverPhoto: coverPhoto || null,
       coverPhotoFocus: coverPhotoFocus || null,
-      participants: JSON.stringify(participants || []),
+      participants: JSON.stringify(cleanParticipants),
       published: published || false,
       country: country || null,
       tripType: tripType || null,
       tips: tips || null,
     },
   })
+
+  await syncTripParticipants(trip.id, cleanParticipants)
 
   return NextResponse.json(trip, { status: 201 })
 }

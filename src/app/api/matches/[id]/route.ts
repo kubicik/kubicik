@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
+import { normalizeNames, syncMatchAttendees } from "@/lib/persons"
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -16,6 +17,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const { id } = await params
   const body = await req.json()
+  const cleanAttendees = normalizeNames(body.attendees)
   const match = await prisma.match.update({
     where: { id },
     data: {
@@ -27,12 +29,13 @@ export async function PUT(req: Request, { params }: Ctx) {
       scoreSpurs: Number(body.scoreSpurs),
       scoreOpponent: Number(body.scoreOpponent),
       outcome: body.outcome ?? null,
-      attendees: JSON.stringify(body.attendees ?? []),
+      attendees: JSON.stringify(cleanAttendees),
       seasonId: body.seasonId ?? null,
       videoUrl: body.videoUrl ?? null,
       notes: body.notes ?? null,
     },
   })
+  await syncMatchAttendees(match.id, cleanAttendees)
   return NextResponse.json(serialize(match))
 }
 

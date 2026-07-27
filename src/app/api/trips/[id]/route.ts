@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { normalizeNames, syncTripParticipants } from "@/lib/persons"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -21,6 +22,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const body = await request.json()
   const { title, description, startDate, endDate, coverPhoto, coverPhotoFocus, participants, published, status, country, tripType, tips, expandAllDays } = body
 
+  const cleanParticipants = normalizeNames(participants)
+
   const trip = await prisma.trip.update({
     where: { id },
     data: {
@@ -30,7 +33,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       endDate: new Date(endDate),
       coverPhoto: coverPhoto || null,
       coverPhotoFocus: coverPhotoFocus || null,
-      participants: JSON.stringify(participants || []),
+      participants: JSON.stringify(cleanParticipants),
       published: published ?? false,
       status: status === "closed" ? "closed" : "open",
       country: country || null,
@@ -39,6 +42,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       expandAllDays: expandAllDays ?? false,
     },
   })
+
+  await syncTripParticipants(trip.id, cleanParticipants)
+
   return NextResponse.json(trip)
 }
 

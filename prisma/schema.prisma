@@ -50,6 +50,7 @@ model Trip {
 
   stops      Stop[]
   tripPhotos TripPhoto[]
+  participantLinks TripParticipant[]
 }
 
 model Stop {
@@ -110,6 +111,39 @@ model Match {
   updatedAt      DateTime     @updatedAt
 
   photos MatchPhoto[]
+  attendeeLinks MatchAttendee[]
+}
+
+model Person {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trips   TripParticipant[]
+  matches MatchAttendee[]
+}
+
+model TripParticipant {
+  tripId   String
+  personId String
+  order    Int    @default(0)
+  trip     Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, personId])
+  @@index([personId])
+}
+
+model MatchAttendee {
+  matchId  String
+  personId String
+  order    Int    @default(0)
+  match    Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, personId])
+  @@index([personId])
 }
 
 model TripPhoto {
