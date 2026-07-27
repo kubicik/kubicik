@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { normalizeNames, syncMatchAttendees } from "@/lib/persons"
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
   const created: string[] = []
 
   for (const m of toUpdate) {
+    const cleanAttendees = normalizeNames(m.attendees)
     await prisma.match.update({
       where: { id: m.id as string },
       data: {
@@ -58,16 +60,18 @@ export async function POST(request: NextRequest) {
         scoreSpurs: Number(m.scoreSpurs),
         scoreOpponent: Number(m.scoreOpponent),
         outcome: (m.outcome as string | null) ?? null,
-        attendees: JSON.stringify(Array.isArray(m.attendees) ? m.attendees : []),
+        attendees: JSON.stringify(cleanAttendees),
         videoUrl: (m.videoUrl as string | null) ?? null,
         notes: (m.notes as string | null) ?? null,
         seasonId: (m.seasonId as string | null) ?? null,
       },
     })
+    await syncMatchAttendees(m.id as string, cleanAttendees)
     updated.push(m.id as string)
   }
 
   for (const m of toCreate) {
+    const cleanAttendees = normalizeNames(m.attendees)
     const match = await prisma.match.create({
       data: {
         date: new Date(m.date as string),
@@ -78,12 +82,13 @@ export async function POST(request: NextRequest) {
         scoreSpurs: Number(m.scoreSpurs),
         scoreOpponent: Number(m.scoreOpponent),
         outcome: (m.outcome as string | null) ?? null,
-        attendees: JSON.stringify(Array.isArray(m.attendees) ? m.attendees : []),
+        attendees: JSON.stringify(cleanAttendees),
         videoUrl: (m.videoUrl as string | null) ?? null,
         notes: (m.notes as string | null) ?? null,
         seasonId: (m.seasonId as string | null) ?? null,
       },
     })
+    await syncMatchAttendees(match.id, cleanAttendees)
     created.push(match.id)
   }
 

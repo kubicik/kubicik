@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { normalizeNames, syncTripParticipants } from "@/lib/persons"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   // Update trip metadata
+  const cleanParticipants = normalizeNames(participants)
   await prisma.trip.update({
     where: { id },
     data: {
@@ -48,12 +50,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       endDate: new Date(endDate),
       coverPhoto: coverPhoto || null,
       coverPhotoFocus: coverPhotoFocus ? JSON.stringify(coverPhotoFocus) : null,
-      participants: JSON.stringify(Array.isArray(participants) ? participants : []),
+      participants: JSON.stringify(cleanParticipants),
       country: country || null,
       tripType: tripType || null,
       tips: tips ? JSON.stringify(tips) : null,
     },
   })
+  await syncTripParticipants(id, cleanParticipants)
 
   // Update existing stops (metadata only — photos are managed in the stop editor)
   for (const stop of toUpdate) {

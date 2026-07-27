@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
+import { normalizeNames, syncMatchAttendees } from "@/lib/persons"
 
 export async function GET() {
   const matches = await prisma.match.findMany({
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
+  const cleanAttendees = normalizeNames(body.attendees)
   const match = await prisma.match.create({
     data: {
       date: new Date(body.date),
@@ -24,12 +26,13 @@ export async function POST(req: Request) {
       scoreSpurs: Number(body.scoreSpurs),
       scoreOpponent: Number(body.scoreOpponent),
       outcome: body.outcome ?? null,
-      attendees: JSON.stringify(body.attendees ?? []),
+      attendees: JSON.stringify(cleanAttendees),
       seasonId: body.seasonId ?? null,
       videoUrl: body.videoUrl ?? null,
       notes: body.notes ?? null,
     },
   })
+  await syncMatchAttendees(match.id, cleanAttendees)
   return NextResponse.json(serialize(match), { status: 201 })
 }
 

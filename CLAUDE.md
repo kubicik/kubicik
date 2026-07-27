@@ -110,7 +110,7 @@ Three models: `Season` (číselník), `Match`, `MatchPhoto`. Key non-obvious fie
 
 - `Match.homeAway` — `"home"` | `"away"`. When home, venue is auto-filled to `"Tottenham Hotspur Stadium"`.
 - `Match.outcome` — `null` (90 min) | `"aet"` (after extra time) | `"pen"` (after penalties). Shown as AET/PEN badge on public page.
-- `Match.attendees` — JSON TEXT, same pattern as `Trip.participants`.
+- `Match.attendees` — JSON TEXT, same pattern as `Trip.participants`. **This is now a denormalised cache** — see [Person Registry](#person-registry-účastníci).
 - `Match.seasonId` — nullable FK to `Season`.
 
 **Competition values** (exhaustive list): `"Premier League"`, `"Champions League"`, `"Europa League"`, `"UEFA Conference League"`, `"FA Cup"`, `"EFL Cup"`, `"Superpohár"`, `"Přátelský zápas"`. Keep in sync across `MatchForm.tsx`, `MatchInlineRow.tsx`, `MatchList.tsx` (color map), and the AI prompt in `MatchImportExportButton.tsx`.
@@ -120,9 +120,27 @@ Three models: `Season` (číselník), `Match`, `MatchPhoto`. Key non-obvious fie
 - `POST /api/matches/import` — accepts `{ preview: boolean, matches: [...] }` or plain array; computes toUpdate/toCreate/toDelete based on `id` presence; `preview: true` returns stats without writing
 - `MatchImportExportButton.tsx` runs the same two-step (input → preview → confirm) UI as `TripJsonUpdateButton.tsx`
 
-**Attendee autocomplete** (`AttendeeInput.tsx`) — `GET /api/attendees` returns deduplicated names from all existing matches + trips. Uses `onMouseDown` not `onClick` in the dropdown to prevent blur-before-click race condition.
+**Attendee autocomplete** (`AttendeeInput.tsx`) — `GET /api/attendees` returns the sorted list of names from the `Person` registry (see below). Uses `onMouseDown` not `onClick` in the dropdown to prevent blur-before-click race condition.
 
 **YouTube video search** — `GET /api/youtube/search?q=` proxies YouTube Data API v3. Requires `YOUTUBE_API_KEY`. Returns `{ videos: [{ videoId, title, thumbnail, channelTitle, publishedAt }] }`. Used by `YouTubeSearch.tsx` component in `MatchForm`.
+
+### Person Registry (Účastníci)
+
+A **unified people číselník** shared by trip participants and match attendees. Three models: `Person` (unique `name`) + two join tables `TripParticipant` / `MatchAttendee` (composite PK `[tripId|matchId, personId]`, `order` column, cascade-on-delete).
+
+**Source-of-truth vs cache** — the join tables are authoritative for membership. `Trip.participants` / `Match.attendees` are kept as a **denormalised JSON cache** (ordered array of names) so every existing read path — public ISR pages, admin lists, exports, `TripCard`/`MatchList` — keeps working unchanged. **Never write these two representations separately.** All membership writes go through `src/lib/persons.ts`:
+
+- `syncTripParticipants(tripId, names)` / `syncMatchAttendees(matchId, names)` — replace a record's links to exactly `names` (ordered) **and** rewrite its JSON cache, atomically in one `$transaction([...])` batch. Called by every trip/match create/update/import route **after** the record exists (the row must exist first). Returns the normalised cache string.
+- `renamePerson(id, name)` — renames + rebuilds the cache of every trip/match the person is in. Throws `PERSON_NAME_TAKEN` (→ 409) on collision; use merge instead.
+- `mergePersons(sourceIds, targetId)` — re-points every source link to the target (deduping when the target already appears in that trip/match, order preserved), deletes the source persons, rebuilds affected caches.
+- `deletePerson(id)` — removes the person from all trips/matches (cascade) and rebuilds their caches.
+- `normalizeNames(x)` — trim, drop empty, dedupe by exact trimmed value (matches the UI's case-sensitive behaviour). Routes use it for the inline cache write so it matches what `sync*` computes.
+
+**No interactive transactions** — the libSQL/Turso adapter only reliably supports the batch (`$transaction([...])`) form. `sync*` uses it for the membership+cache swap; rename/merge/delete run as sequential, idempotent-on-retry writes (safe to re-run if interrupted).
+
+**Backfill** — `prisma/seed.ts` → `backfillPersons()` populates `Person` + join rows from the legacy JSON arrays. Idempotent: runs only when `Person` is empty (fires once on the first build after the `person_registry` migration).
+
+**Admin** — `/admin/persons` (list with occurrence counts + multi-select merge), `/admin/persons/[id]` (occurrences with links to trip/match admin pages, rename, merge-into-another, delete). API: `GET /api/persons`, `GET|PATCH|DELETE /api/persons/[id]`, `POST /api/persons/merge`.
 
 ### Map Components
 

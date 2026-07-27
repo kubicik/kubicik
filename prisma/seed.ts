@@ -36,6 +36,70 @@ async function main() {
   } else {
     console.log("Family user already exists")
   }
+
+  await backfillPersons()
+}
+
+/**
+ * One-time backfill of the unified person registry (číselník) from the legacy
+ * JSON name arrays in Trip.participants / Match.attendees. Idempotent: only runs
+ * when the Person table is empty, so it fires once on the first build after the
+ * person_registry migration and is skipped forever after.
+ */
+async function backfillPersons() {
+  const personCount = await prisma.person.count()
+  if (personCount > 0) {
+    console.log("Person registry already populated – skipping backfill")
+    return
+  }
+
+  const parse = (s: string): string[] => {
+    try { const a = JSON.parse(s); return Array.isArray(a) ? a : [] } catch { return [] }
+  }
+  const norm = (names: string[]): string[] => {
+    const out: string[] = []
+    const seen = new Set<string>()
+    for (const raw of names) {
+      if (typeof raw !== "string") continue
+      const n = raw.trim()
+      if (!n || seen.has(n)) continue
+      seen.add(n)
+      out.push(n)
+    }
+    return out
+  }
+
+  const idByName = new Map<string, string>()
+  const personId = async (name: string): Promise<string> => {
+    const cached = idByName.get(name)
+    if (cached) return cached
+    const p = await prisma.person.upsert({ where: { name }, update: {}, create: { name } })
+    idByName.set(name, p.id)
+    return p.id
+  }
+
+  const [trips, matches] = await Promise.all([
+    prisma.trip.findMany({ select: { id: true, participants: true } }),
+    prisma.match.findMany({ select: { id: true, attendees: true } }),
+  ])
+
+  let links = 0
+  for (const t of trips) {
+    const names = norm(parse(t.participants))
+    for (let i = 0; i < names.length; i++) {
+      await prisma.tripParticipant.create({ data: { tripId: t.id, personId: await personId(names[i]), order: i } })
+      links++
+    }
+  }
+  for (const m of matches) {
+    const names = norm(parse(m.attendees))
+    for (let i = 0; i < names.length; i++) {
+      await prisma.matchAttendee.create({ data: { matchId: m.id, personId: await personId(names[i]), order: i } })
+      links++
+    }
+  }
+
+  console.log(`Person registry backfilled: ${idByName.size} persons, ${links} links`)
 }
 
 main()
